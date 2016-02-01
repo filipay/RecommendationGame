@@ -1,0 +1,14 @@
+.movie {
+    padding: 8px;
+}
+
+.poster {
+    max-height: 50px;
+    max-width: 50px;
+}
+
+.title {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+}

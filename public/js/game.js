@@ -1,27 +1,49 @@
 /**
  * Created by filip on 14/10/15.
  */
+
 var Container = PIXI.Container,
     TextureCache = PIXI.utils.TextureCache,
     loader = PIXI.loader,
     resources = PIXI.loader.resources,
     Sprite = PIXI.Sprite,
     Graphics = PIXI.Graphics,
-    Text = PIXI.Text;
+    Text = PIXI.Text,
+    Point = PIXI.Point;
 
-
-function Movie(title, poster) {
-    this.title = title;
-    this.poster = poster;
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function Position(x, y) {
-    this.x = x;
-    this.y = y;
+var currentUser;
+
+
+$.getJSON('/user.php', function(data) {
+    currentUser = new User(data.name, data.username, data.movies);
+    socket.emit('newPlayer', currentUser);
+});
+
+var randomMovies = [];
+
+function loadAssets(movies) {
+    randomMovies = movies;
+    movies.forEach(function(movie) {
+        loader.add(movie.poster_url);
+    });
+    loadPlaceholders();
+}
+
+function User(name, username, movieList, avatar) {
+    this.name = name;
+    this.username = username;
+    this.avatar = avatar || 'images/avatar-placeholder.png';
+    this.movieList = movieList;
+    this.score = 0;
 }
 
 var width = 800,
     height = 600;
+
 var renderer = PIXI.autoDetectRenderer(
     width, height, {
         antialiasing: true,
@@ -31,52 +53,86 @@ var renderer = PIXI.autoDetectRenderer(
     }
 );
 var socket = io.connect('http://localhost:3000');
+socket.on('updateScore', updateScore);
+socket.on('playerJoined', createTable);
+socket.on('loadAssets', loadAssets);
+
+function updateScore(data) {
+    currentUser.score += data.score;
+    currentScore.text = "Your score: " + currentUser.score;
+}
+
 renderer.view.style.position = "absolute";
 renderer.view.style.display = "block";
 renderer.resize(window.innerWidth, window.innerHeight);
 renderer.backgroundColor = 0x0B5394;
 
 document.body.appendChild(renderer.view);
-loader
-    .add("card", "images/card.png")
-    .add("movie", "images/movie-placeholder.jpg")
-    .add("avatar", "images/avatar-placeholder.png")
-    .load(setup);
+
+function loadPlaceholders() {
+    loader
+        .add("card", "images/card.png")
+        .add("movie", "images/movie-placeholder.jpg")
+        .add("avatar", "images/avatar-placeholder.png")
+        .load(setup);
+}
 
 var stage = new Container();
 
 var card_w = 84,
     card_h = 124;
 
-function createCard(x, y, movie_title, movie_poster) {
 
+var currentScore = new PIXI.Text(
+    "Your score : 0", {
+        font: "40px sans-serif",
+        fill: "white"
+    }
+);
 
-    var card = new Container();
-    var plain_card = new Sprite(resources.card.texture);
-    plain_card.anchor.set(0.5, 0.5);
-    card.x = x;
-    card.y = y;
+currentScore.position.set(50, 50);
+stage.addChild(currentScore);
 
-    card.interactive = true;
-    card.buttonMode = true;
+var waitingText = new PIXI.Text(
+    "Waiting for players...", {
+        font: "40px sans-serif",
+        fill: "white"
+    }
+);
+waitingText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
+waitingText.anchor.set(0.5, 0.5);
+stage.addChild(waitingText);
 
-    var poster = new Sprite(movie_poster);
+function Card(position, movie) {
+
+    var container = new Container();
+
+    for (var key in movie) {
+        if (movie.hasOwnProperty(key)) {
+            container[key] = movie[key];
+        }
+    }
+
+    var background = new Sprite(resources.card.texture);
+    background.anchor.set(0.5, 0.5);
+    container.position = position;
+
+    container.interactive = true;
+    container.buttonMode = true;
+
+    var poster = new Sprite.fromImage(movie.poster_url);
     poster.width = card_w * 0.7;
     poster.height = card_h * 0.7;
     poster.anchor.set(0.5, 0.5);
 
-    var title = new PIXI.Text(
-        movie_title, {
-            font: "10px sans-serif",
-            fill: "black"
-        }
-    );
-
+    var title = new PIXI.Text(movie.title, {
+        font: "10px sans-serif",
+        fill: "black"
+    });
     title.anchor.set(0.5, 0.5);
     title.position.set(0, -card_h * 0.4);
 
-
-    card
+    container
     // events for drag start
         .on('mousedown', onDragStart)
         .on('touchstart', onDragStart)
@@ -97,55 +153,39 @@ function createCard(x, y, movie_title, movie_poster) {
             this.scale.y = 1;
         });
 
-    card.addChild(plain_card);
-    card.addChild(poster);
-    card.addChild(title);
-    return card;
+    container.addChild(background);
+    container.addChild(poster);
+    container.addChild(title);
+    return container;
 }
 
-var hand = new Container();
+function Player(position, user) {
+    var player = new Container();
+    player.position = position;
+    player.username = user.username;
 
-function createHand(size) {
-    var x = window.innerWidth * 0.5,
-        y = window.innerHeight - card_h * 0.5 - 10;
-
-    var start_x = x - size * card_w * 0.5;
-
-    for (i = 0; i < size; i++) {
-        x = start_x + i * (card_w + 10);
-        var card = createCard(x, y, "Sherlock Holmes", resources.movie.texture);
-        card.childNo = i;
-        hand.addChild(card);
-        console.log(card.childNo);
-    }
-    stage.addChild(hand);
-}
-
-function createPlayer(x, y, profiler, name) {
-    var avatar = new Sprite(profiler);
-    avatar.position.set(x, y);
+    var avatar = new Sprite.fromImage(user.avatar);
     avatar.anchor.set(0.5, 0.5);
     avatar.width = avatar.height = window.innerHeight * 0.15;
 
     var username = new Text(
-        name, {
+        user.name, {
             font: "20px sans-serif",
             fill: "white"
         }
     );
     username.anchor.set(0.5, 0.5);
-    username.position.set(x, y - avatar.height * 0.7);
+    username.position.set(0, -avatar.height * 0.7);
 
 
     var circle = new Graphics();
     circle.lineStyle(0);
     circle.beginFill(0xFFFF0B, 0.5);
-    circle.drawCircle(x, y, avatar.width * 0.5);
+    circle.drawCircle(position.x, position.y, avatar.width * 0.5);
     circle.endFill();
 
     avatar.mask = circle;
 
-    var player = new Container();
     player.addChild(avatar);
     player.addChild(username);
 
@@ -153,28 +193,56 @@ function createPlayer(x, y, profiler, name) {
 
 }
 
+
+
+function createHand(movies, container, rotation) {
+    var hand = new Container();
+    hand.position = new Point(container.width * 0.5, container.height * 1.3);
+    // var start_x = x - movies.length * card_w * 0.5;
+
+    for (i = 0; i < movies.length; i++) {
+        x = i * (card_w + 10);
+
+        var card = Card(new Point(x, 0), movies[i]);
+        card.childNo = i;
+        hand.addChild(card);
+    }
+    // hand.rotation = -Math.PI/10.0;
+    container.addChildAt(hand, 1);
+}
+
+
 var table = new Container();
 
-function createTable(size) {
-    var angle_step = -Math.PI / (size - 1);
+function createTable(players) {
+    waitingText.visible = false;
+    stage.removeChild(table);
+    table = new Container();
+    var angle_step = players.length > 2 ? -Math.PI / (players.length - 2) : 1;
     var radius = window.innerHeight * 0.5;
+    var count = 0;
+    players.forEach(function(player) {
+        if (player.socket !== socket.id) {
+            var angle = angle_step * count;
+            var x = radius * Math.cos(angle);
+            var y = radius * Math.sin(angle);
 
-    for (var i = 0; i < size; i++) {
-        var x = radius * Math.cos(angle_step * i);
-        var y = radius * Math.sin(angle_step * i);
+            x += window.innerWidth * 0.5;
+            y += window.innerHeight - 200;
+            console.log(player);
+            var seat = Player(new PIXI.Point(x, y), new User(player.name, player.username));
+            table.addChild(seat);
 
-        x += window.innerWidth * 0.5;
-        y += window.innerHeight - 200;
-        var player = createPlayer(x, y, resources.avatar.texture, "Name");
-        table.addChild(player);
-    }
-    stage.addChild(table);
+            count++;
+        }
+    });
+    stage.addChildAt(table, 0);
+
 }
 
 function setup() {
-
-    createTable(5);
-    createHand(5);
+    stage.addChild(waitingText);
+    createHand(randomMovies.slice(0, 4), stage);
     requestAnimationFrame(animate);
 
 }
@@ -192,13 +260,13 @@ function onDragStart(event) {
     this.data = event.data;
     this.alpha = 0.8;
     this.dragging = true;
-    this.contact = false;
+    this.player = undefined;
     this.origin = new PIXI.Point(this.position.x, this.position.y);
 }
 
 function onDragEnd() {
 
-    if (this.contact) {
+    if (this.username) {
         assignCard(this);
     } else {
         this.position = this.origin;
@@ -221,26 +289,21 @@ function onDragMove() {
 
         this.position.x = newPosition.x;
         this.position.y = newPosition.y;
-        this.contact = cardOnPlayer(this);
+        isCardOnPlayer(this);
     }
-
-
 }
 
-function cardOnPlayer(card) {
-    var contains = false;
-    for (child in table.children) {
-        if (table.children.hasOwnProperty(child)) {
-            var player = table.children[child];
-            if (player.children[0].containsPoint(new PIXI.Point(card.position.x, card.position.y))) {
-                onPlayerHover(player);
-                contains = true;
-            } else {
-                onPlayerHoverOut(player);
-            }
+function isCardOnPlayer(card) {
+    table.children.forEach(function(player) {
+        if (player.children[0].containsPoint(card.toGlobal(new Point(0, 0)))) {
+            onPlayerHover(player);
+            card.assignedTo = player.username;
+        } else {
+            onPlayerHoverOut(player);
+            card.assignedTo = undefined;
         }
-    }
-    return contains;
+    });
+
 }
 
 function onPlayerHover(player) {
@@ -258,9 +321,12 @@ function onPlayerHoverOut(player) {
 }
 
 function assignCard(card) {
-    for (i = card.childNo + 1; i < hand.children.length; i++) {
-        hand.children[i].childNo--;
-    }
+    console.log(card);
+    socket.emit('assignCard', {
+        assignedTo: card.username,
+        movie: card.movie_id
+    });
 
-    hand.removeChildAt(card.childNo);
+    card.parent.removeChild(card);
+
 }
