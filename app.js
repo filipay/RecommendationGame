@@ -4,6 +4,7 @@ var http = require('http');
 var io;
 var gameSocket;
 var players = [];
+var cardsOnTable = [];
 
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
@@ -57,6 +58,7 @@ function newPlayer(player) {
     player.availableMovies = possibleMovies(player.movieList);
     players.push(player);
     // console.log(players);
+    io.sockets.emit('createPile', cardsOnTable);
     io.sockets.emit('playerJoined', players);
     this.emit('loadAssets', player.availableMovies);
   } else {
@@ -102,6 +104,7 @@ function cardAssigned(data) {
   }
   var chosen_movie = getMovie(data.movie);
   // console.log(chosen_movie);
+  cardsOnTable.push(chosen_movie);
   io.sockets.emit('placeOnPile', chosen_movie);
 }
 

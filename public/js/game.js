@@ -16,7 +16,7 @@ function getRandomInt(min, max) {
 }
 
 function getRandomDouble(min, max) {
-  return Math.random() * (max - min + 1) + min;
+  return Math.random() * (max - min) + min;
 }
 
 var currentUser;
@@ -60,6 +60,7 @@ socket.on('updateScore', updateScore);
 socket.on('playerJoined', createTable);
 socket.on('loadAssets', loadAssets);
 socket.on('placeOnPile', placeOnPile);
+socket.on('createPile', createPile);
 
 function updateScore(data) {
   currentUser.score += data.score;
@@ -267,6 +268,7 @@ function createPile(container, size) {
   pile.height = size.height;
 
   container.addChild(pile);
+  pile = rectangle;
 }
 
 
@@ -384,13 +386,17 @@ function assignCard(card) {
 }
 
 function placeOnPile(movie) {
+  if (!pile.children.some(function (m) {
+    return m.movie_id === movie.movie_id;
+  })) {
+    var x = getRandomInt(0, pile.width),
+        y = getRandomInt(0,pile.height),
+        rotation = getRandomDouble(-0.5, 0.5);
 
-  var x = getRandomInt(0, pile.width),
-      y = getRandomInt(0,pile.height),
-      rotation = getRandomDouble(-Math.PI/20, Math.PI/20);
+    console.log(rotation);
+    var card = Card(new Point(x,y), movie, rotation);
 
-  console.log(rotation);
-  var card = Card(new Point(x,y), movie, rotation);
+    pile.addChild(card);
+  }
 
-  pile.addChild(card);
 }
