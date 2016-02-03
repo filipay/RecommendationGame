@@ -15,6 +15,10 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function getRandomDouble(min, max) {
+  return Math.random() * (max - min + 1) + min;
+}
+
 var currentUser;
 
 $.getJSON('/user.php', function(data) {
@@ -103,7 +107,7 @@ waitingText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
 waitingText.anchor.set(0.5, 0.5);
 stage.addChild(waitingText);
 
-function Card(position, movie) {
+function Card(position, movie, rotation) {
 
   var container = new Container();
 
@@ -116,6 +120,7 @@ function Card(position, movie) {
   var background = new Sprite(resources.card.texture);
   background.anchor.set(0.5, 0.5);
   container.position = position;
+  container.rotation = rotation || 0;
 
   container.interactive = true;
   container.buttonMode = true;
@@ -156,6 +161,7 @@ function Card(position, movie) {
   container.addChild(background);
   container.addChild(poster);
   container.addChild(title);
+
   return container;
 }
 
@@ -238,14 +244,27 @@ function createTable(players) {
   stage.addChildAt(table, 0);
 
 }
+var pile = new Container();
 
 function createPile(container, size) {
-  var pile = new Container();
+  pile.constructor.name = 'Pile';
+  console.log(size.width);
+  pile.position = new Point(container.width * 0.5, (container.height - size.height) * 0.5);
+
+  console.log(pile.width);
+
+  var rectangle = new Graphics();
+
+  rectangle.beginFill(0xFFFF00);
+  rectangle.lineStyle(2,0xFFFF00);
+  rectangle.drawRect(0, 0, size.width, size.height);
+  console.log(pile.width + ' = pile widht, ' + pile.height + ' = pile.height');
+  rectangle.endFill();
+
+  pile.addChild(rectangle);
 
   pile.width = size.width;
   pile.height = size.height;
-
-  pile.position = new Point((container.width - pile.width) * 0.5, (container.height - pile.height) * 0.5);
 
   container.addChild(pile);
 }
@@ -255,8 +274,8 @@ function setup() {
   stage.addChild(waitingText);
   createHand(getRandomCardList(randomMovies, 5), stage);
   createPile(stage, {
-    width: 500,
-    height: 500
+    width: 300,
+    height: 300
   });
   requestAnimationFrame(animate);
 
@@ -365,5 +384,13 @@ function assignCard(card) {
 }
 
 function placeOnPile(movie) {
-  console.log(movie);
+
+  var x = getRandomInt(0, pile.width),
+      y = getRandomInt(0,pile.height),
+      rotation = getRandomDouble(-Math.PI/20, Math.PI/20);
+
+  console.log(rotation);
+  var card = Card(new Point(x,y), movie, rotation);
+
+  pile.addChild(card);
 }
