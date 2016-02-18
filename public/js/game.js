@@ -1,6 +1,8 @@
 /**
  * Created by filip on 14/10/15.
  */
+var randomMovies = [];
+var currentUser;
 
 var Container = PIXI.Container,
     TextureCache = PIXI.utils.TextureCache,
@@ -11,6 +13,14 @@ var Container = PIXI.Container,
     Text = PIXI.Text,
     Point = PIXI.Point;
 
+var socket = io.connect('http://localhost:3000');
+socket.on('updateScore', updateScore);
+socket.on('playerJoined', createTable);
+socket.on('loadAssets', loadAssets);
+socket.on('placeOnPile', placeOnPile);
+socket.on('createPile', createPile);
+socket.on('gameSize', gameSize);
+
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -19,14 +29,20 @@ function getRandomDouble(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-var currentUser;
+function gameSize(size) {
+    $.getJSON('/user.php?user_id=' + (size + 2), function(data) {
+        currentUser = new User(data.name, data.username, data.movies);
+        socket.emit('joinGame', currentUser);
+    });
+}
 
-$.getJSON('/user.php', function(data) {
-    currentUser = new User(data.name, data.username, data.movies);
-    socket.emit('joinGame', currentUser);
-});
+socket.emit('gameSize');
 
-var randomMovies = [];
+// $.getJSON('/user.php?user_id=' + (socket.emit('gameSize') + 1), function(data) {
+//     currentUser = new User(data.name, data.username, data.movies);
+//     socket.emit('joinGame', currentUser);
+// });
+
 
 function loadAssets(movies) {
     randomMovies = movies;
@@ -55,12 +71,7 @@ var renderer = PIXI.autoDetectRenderer(
         autoResize: true
     }
 );
-var socket = io.connect('http://localhost:3000');
-socket.on('updateScore', updateScore);
-socket.on('playerJoined', createTable);
-socket.on('loadAssets', loadAssets);
-socket.on('placeOnPile', placeOnPile);
-socket.on('createPile', createPile);
+
 
 $(window).on('beforeunload', function() {
     socket.close();
@@ -118,6 +129,11 @@ stage.addChild(waitingText);
 function Card(position, movie, rotation) {
 
     var container = new Container();
+    container.position = position;
+    container.rotation = rotation || 0;
+
+    container.interactive = true;
+    container.buttonMode = true;
 
     for (var key in movie) {
         if (movie.hasOwnProperty(key)) {
@@ -127,11 +143,14 @@ function Card(position, movie, rotation) {
 
     var background = new Sprite(resources.card.texture);
     background.anchor.set(0.5, 0.5);
-    container.position = position;
-    container.rotation = rotation || 0;
 
-    container.interactive = true;
-    container.buttonMode = true;
+    // var background = new Graphics();
+    // background.anchor.set(0.5, 0.5);
+
+    // background.beginFill(0xFFFFFF);
+    // background.lineStyle(1, 0xFFFFFF);
+    // background.drawRoundedRect(0, 0, card_w, card_h);
+    // background.endFill();
 
     var poster = new Sprite.fromImage(movie.poster_url);
     poster.width = card_w * 0.7;
@@ -257,38 +276,34 @@ function createTable(players) {
 }
 var pile = new Container();
 
-function createPile(container, size) {
-    pile.constructor.name = 'Pile';
+function createPile(position, size) {
     // console.log(size.width);
-    pile.position = new Point(container.width * 0.5, (container.height - size.height) * 0.5);
 
-    console.log(pile.width);
+    // console.log(pile.width);
 
-    var rectangle = new Graphics();
+    pile = new Graphics();
+    pile.position = position;
 
-    rectangle.beginFill(0xFFFF00);
-    rectangle.lineStyle(2, 0xFFFF00);
-    rectangle.drawRect(0, 0, size.width, size.height);
-    console.log(pile.width + ' = pile widht, ' + pile.height + ' = pile.height');
-    rectangle.endFill();
+    pile.beginFill(0x0b8c00);
+    pile.lineStyle(2, 0xffffff);
+    pile.drawRoundedRect(0, 0, size.width, size.height);
+    // console.log(pile.width + ' = pile widht, ' + pile.height + ' = pile.height');
+    pile.endFill();
+    // pile.width = size.width;
+    // pile.height = size.height;
 
-    pile.addChild(rectangle);
-
-    pile.width = size.width;
-    pile.height = size.height;
-
-    container.addChild(pile);
-    pile = rectangle;
+    return pile;
 }
 
 
 function setup() {
     stage.addChild(waitingText);
+    stage.addChildAt(createPile(
+        new Point((window.innerWidth - 500) * 0.5, (window.innerHeight - 500) * 0.5), {
+            width: 500,
+            height: 500
+        }), 0);
     createHand(getRandomCardList(randomMovies, 5), stage, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9));
-    createPile(stage, {
-        width: 300,
-        height: 300
-    });
     requestAnimationFrame(animate);
 
 }

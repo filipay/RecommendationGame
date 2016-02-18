@@ -39,6 +39,7 @@ exports.initGame = function(s_io, socket) {
     gameSocket.on('assignCard', cardAssigned);
     gameSocket.on('disconnect', playerDisconnect);
     gameSocket.on('outOfCards', outOfCards);
+    gameSocket.on('gameSize', amountOfPlayers);
 
 };
 
@@ -54,6 +55,10 @@ function possibleMovies(player_movies) {
     return possibleMovies;
 }
 
+function amountOfPlayers() {
+    console.log('amountOfPlayers called: ' + players.length);
+    this.emit('gameSize', players.length);
+}
 
 function playerConnect(player) {
     console.log(player.username + " connected");

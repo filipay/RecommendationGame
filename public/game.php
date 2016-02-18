@@ -24,7 +24,7 @@ sec_session_start();
         <script src="/js/tween.js"></script>
     </head>
     <body>
-        <?php if (login_check($mysqli)) : ?>
+        <?php if (true) : ?>
             <script src="http://localhost:3000/socket.io/socket.io.js"></script>
             <script src="js/game.js"></script>
         <?php else : ?>
