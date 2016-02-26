@@ -52,7 +52,7 @@ function onAssetsLoaded(){
     }, 1000).onUpdate(function () {
         background.x = this.x;
         background.y = this.y;
-    }).easing(TWEEN.Easing.Back.Out)
+    }).easing(TWEEN.Easing.Back.InOut)
     .start();
 
 

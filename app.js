@@ -3,9 +3,12 @@ var http = require('http');
 
 var io;
 var gameSocket;
+var joinedPlayers = {};
 var players = [];
 var suggested = {};
 var movies = [];
+var pile = [];
+var playersFinished = 0;
 
 
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
@@ -40,6 +43,9 @@ exports.initGame = function(s_io, socket) {
     gameSocket.on('disconnect', playerDisconnect);
     gameSocket.on('outOfCards', outOfCards);
     gameSocket.on('gameSize', amountOfPlayers);
+    gameSocket.on('requestPile', sendPile);
+    gameSocket.on('requestTable', sendTable);
+    gameSocket.on('userHand', userHand);
 
 };
 
@@ -61,21 +67,32 @@ function amountOfPlayers() {
 }
 
 function playerConnect(player) {
-    console.log(player.username + " connected");
-    if (players.indexOf(player) < 0) {
+    var joinedPlayer = joinedPlayers[player.username];
+    if (joinedPlayer) {
+        this.emit('loadAssets', joinedPlayer.availableMovies);
+        this.emit('resume', joinedPlayer.cards);
+        players.push(joinedPlayer);
+    } else {
+        joinedPlayers[player.username] = player;
         player.socket = this.id;
         player.availableMovies = possibleMovies(player.movieList);
-        players.push(player);
-        // players[player.socket] = player;
-        console.log(players);
-        // io.sockets.emit('createPile', suggested);
-        io.sockets.emit('playerJoined', players);
         this.emit('loadAssets', player.availableMovies);
-    } else {
-        console.log("this player already exists");
+        players.push(player);
     }
 
+
+    // if (players.indexOf(player) < 0) {
+    //
+    //     // players[player.socket] = player;
+    //     console.log(players);
+    //     // io.sockets.emit('createPile', suggested);
+    // } else {
+    //     console.log("this player already exists");
+    // }
+
 }
+
+
 
 function playerDisconnect() {
     // var player = players[this.id];
@@ -84,24 +101,37 @@ function playerDisconnect() {
     //     player = undefined;
     //     io.sockets.emit('playerJoined', players);
     // }
-
+    console.log(players);
     var disconnected = this.id;
+    console.log("disconnected id " + disconnected);
+    // console.log(this);
+
     // console.log(disconnected);
-    players.forEach(function(player) {
-        if (player.socket === disconnected.id) {
-            disconnected = player;
+    players.some(function(player) {
+        if (player.socket === disconnected) {
+            return (disconnected = player);
         }
+        return false;
     });
+    console.log('==========================================');
     console.log(disconnected);
 
-    players.splice(disconnected, 1);
-    console.log('player len = ' + players.length);
+    players.splice(players.indexOf(disconnected), 1);
+    console.log(players);
     io.sockets.emit('playerJoined', players);
 }
 
 
 function cardAssigned(data) {
     console.log(data);
+
+    var cards = joinedPlayers[data.assignedBy].cards;
+    cards.forEach(function (card) {
+        if (card.movie_id == data.movie_id) {
+            cards.splice(cards.indexOf(card),1);
+        }
+    });
+
     var assignedPlayer;
 
     players.forEach(function(player) {
@@ -112,11 +142,12 @@ function cardAssigned(data) {
 
     updateScore(assignedPlayer, this, data.movie_id);
     var chosen_movie = getMovie(data.movie_id);
+    pile.push(chosen_movie);
     // console.log(chosen_movie);
 
     console.log(suggested);
     console.log(chosen_movie);
-    io.sockets.emit('placeOnPile', chosen_movie);
+    io.sockets.emit('placeOnPile', [chosen_movie]);
 }
 
 function getMovie(movie_id) {
@@ -136,8 +167,8 @@ function addCollaborator(assignedTo, assignedBy, movie) {
 }
 
 function updateScore(assignedTo, assignedBy, movie) {
-    if (assignedTo.movieList.some(function(movie) {
-            return movie.movie_id === movie;
+    if (assignedTo.movieList.some(function(userMovie) {
+            return userMovie.movie_id === movie;
         })) {
         console.log('MATCH FOUND');
         assignedBy.emit('updateScore', {
@@ -151,10 +182,29 @@ function updateScore(assignedTo, assignedBy, movie) {
                 score: (collaborators.length - i + 1) * 10
             });
         }
-
     }
 }
 
 function outOfCards() {
+    console.log('playersFinished = ' + playersFinished);
+    playersFinished++;
+    if (playersFinished == players.length) {
+        console.log('newROUND!!!!');
+        pile = [];
+        io.sockets.emit('newRound');
+        playersFinished = 0;
+    }
 
+}
+
+function sendPile() {
+    this.emit('placeOnPile', pile);
+}
+
+function sendTable() {
+    io.sockets.emit('playerJoined', players);
+}
+
+function userHand(username, cards) {
+    joinedPlayers[username].cards = cards;
 }

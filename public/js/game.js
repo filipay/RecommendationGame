@@ -3,6 +3,7 @@
  */
 var randomMovies = [];
 var currentUser;
+var cards;
 
 var Container = PIXI.Container,
     TextureCache = PIXI.utils.TextureCache,
@@ -20,6 +21,8 @@ socket.on('loadAssets', loadAssets);
 socket.on('placeOnPile', placeOnPile);
 socket.on('createPile', createPile);
 socket.on('gameSize', gameSize);
+socket.on('newRound', newRound);
+socket.on('resume', resumeCards);
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -53,7 +56,8 @@ function loadAssets(movies) {
 }
 
 function User(name, username, movieList, avatar) {
-    this.name = name;
+    this.name = name || username;
+    console.log(name);
     this.username = username;
     this.avatar = avatar || 'images/avatar-placeholder.png';
     this.movieList = movieList;
@@ -93,7 +97,7 @@ document.body.appendChild(renderer.view);
 function loadPlaceholders() {
     loader
         .add("card", "images/card.png")
-        .add("movie", "images/movie-placeholder.jpg")
+        .add("blank_card", "images/back_card.png")
         .add("avatar", "images/avatar-placeholder.png")
         .load(setup);
 }
@@ -126,7 +130,16 @@ waitingText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
 waitingText.anchor.set(0.5, 0.5);
 stage.addChild(waitingText);
 
-function Card(position, movie, rotation) {
+
+function BlankCard(position) {
+    var background = new Sprite(resources.blank_card.texture);
+    background.anchor.set(0.5, 0.5);
+
+    return background;
+}
+
+
+function Card(position, movie, options, rotation) {
 
     var container = new Container();
     container.position = position;
@@ -134,6 +147,9 @@ function Card(position, movie, rotation) {
 
     container.interactive = true;
     container.buttonMode = true;
+
+    container.movable = options.movable;
+    container.droppable = options.droppable;
 
     for (var key in movie) {
         if (movie.hasOwnProperty(key)) {
@@ -143,14 +159,6 @@ function Card(position, movie, rotation) {
 
     var background = new Sprite(resources.card.texture);
     background.anchor.set(0.5, 0.5);
-
-    // var background = new Graphics();
-    // background.anchor.set(0.5, 0.5);
-
-    // background.beginFill(0xFFFFFF);
-    // background.lineStyle(1, 0xFFFFFF);
-    // background.drawRoundedRect(0, 0, card_w, card_h);
-    // background.endFill();
 
     var poster = new Sprite.fromImage(movie.poster_url);
     poster.width = card_w * 0.7;
@@ -210,40 +218,32 @@ function Player(position, user) {
     username.anchor.set(0.5, 0.5);
     username.position.set(0, -avatar.height * 0.7);
 
-
     var circle = new Graphics();
     circle.lineStyle(0);
     circle.beginFill(0xFFFF0B, 0.5);
-    circle.drawCircle(position.x, position.y, avatar.width * 0.5);
+    circle.drawCircle(0,0, avatar.width + 10);
     circle.endFill();
-
+    avatar.addChild(circle);
     avatar.mask = circle;
 
     player.addChild(avatar);
     player.addChild(username);
 
     return player;
-
 }
-
-
-
-function createHand(movies, container, position, rotation) {
-    var hand = new Container();
+var hand = new Container();
+function createHand(movies, container, position, options, rotation) {
     hand.position = position;
-
 
     for (i = 0; i < movies.length; i++) {
         x = i * (card_w + 10);
 
-        var card = Card(new Point(x, 0), movies[i]);
+        var card = Card(new Point(x, 0), movies[i], options);
         hand.addChild(card);
     }
-    console.log('hand width VVVVVVVVVVVVVVVVV');
-    console.log(hand.width);
     hand.position.x -= hand.width * 0.5 - 10;
-    // hand.rotation = -Math.PI/10.0;
-    container.addChildAt(hand, 1);
+    hand.rotation = rotation || 0;
+    container.addChildAt(hand, 2);
 }
 
 
@@ -253,25 +253,25 @@ function createTable(players) {
     waitingText.visible = false;
     stage.removeChild(table);
     table = new Container();
-    var angle_step = players.length > 2 ? -Math.PI / (players.length - 2) : 1;
+    var angle_step = players.length > 2 ? -Math.PI / players.length : -Math.PI * 0.5;//-Math.PI * 0.5;
     var radius = window.innerHeight * 0.5;
-    var count = 0;
+    var count = 1;
     players.forEach(function(player) {
-        if (player.socket !== socket.id) {
+        if (player.username !== currentUser.username) {
             var angle = angle_step * count;
             var x = radius * Math.cos(angle);
             var y = radius * Math.sin(angle);
 
             x += window.innerWidth * 0.5;
             y += window.innerHeight - 200;
-            console.log(player);
-            var seat = Player(new PIXI.Point(x, y), new User(player.name, player.username));
+            var point = new PIXI.Point(x, y);
+            var seat = Player(point, new User(player.name, player.username));
+            // createHand(getRandomCardList(randomMovies, 5), seat, new Point(0,0), undefined);
             table.addChild(seat);
-
             count++;
         }
     });
-    stage.addChildAt(table, 0);
+    stage.addChildAt(table, 2);
 
 }
 var pile = new Container();
@@ -291,19 +291,28 @@ function createPile(position, size) {
     pile.endFill();
     // pile.width = size.width;
     // pile.height = size.height;
-
     return pile;
 }
 
 
 function setup() {
+    if (!cards) {
+        cards = getRandomCardList(randomMovies, 5);
+        socket.emit('userHand', currentUser.username, cards);
+
+    }
     stage.addChild(waitingText);
     stage.addChildAt(createPile(
         new Point((window.innerWidth - 500) * 0.5, (window.innerHeight - 500) * 0.5), {
             width: 500,
             height: 500
         }), 0);
-    createHand(getRandomCardList(randomMovies, 5), stage, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9));
+    createHand(cards, stage, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+        movable: true,
+        droppable: true
+    });
+    socket.emit('requestPile');
+    socket.emit('requestTable');
     requestAnimationFrame(animate);
 
 }
@@ -331,27 +340,36 @@ function getRandomCardList(movies, size) {
     return list;
 }
 
+function getBlankCardsList(size) {
+    var movies = [];
+    for (var i = 0; i < size; i++) {
+        movies.push();
+    }
+}
+
 
 function onDragStart(event) {
     // store a reference to the data
     // the reason for this is because of multitouch
     // we want to track the movement of this particular touch
-    this.data = event.data;
-    this.alpha = 0.8;
-    this.dragging = true;
-    this.player = undefined;
-    this.origin = new PIXI.Point(this.position.x, this.position.y);
+    if (this.movable) {
+        this.data = event.data;
+        this.alpha = 0.8;
+        this.dragging = true;
+        this.player = undefined;
+        this.origin = new PIXI.Point(this.position.x, this.position.y);
+    }
 }
 
 function onDragEnd() {
-
+    console.log(this.position);
     if (this.assignedTo) {
         assignCard(this);
     } else {
         this.position = this.origin;
     }
 
-    console.log(this.origin);
+
     this.alpha = 1;
 
     this.dragging = false;
@@ -368,21 +386,22 @@ function onDragMove() {
 
         this.position.x = newPosition.x;
         this.position.y = newPosition.y;
-        isCardOnPlayer(this);
+        if (this.droppable) isCardOnPlayer(this);
     }
 }
 
 function isCardOnPlayer(card) {
-    table.children.forEach(function(player) {
+    var players = table.children;
+    table.children.some(function(player) {
         if (player.children[0].containsPoint(card.toGlobal(new Point(0, 0)))) {
             onPlayerHover(player);
-            card.assignedTo = player.username;
+            return (card.assignedTo = player.username);
         } else {
             onPlayerHoverOut(player);
-            card.assignedTo = undefined;
+            return (card.assignedTo = undefined);
         }
     });
-
+    console.log(card.assignedTo);
 }
 
 function onPlayerHover(player) {
@@ -402,26 +421,49 @@ function onPlayerHoverOut(player) {
 function assignCard(card) {
     console.log(card);
     socket.emit('assignCard', {
+        assignedBy: currentUser.username,
         assignedTo: card.assignedTo,
         movie_id: card.movie_id
     });
-
+    if (card.parent.children.length == 1) {
+        socket.emit('outOfCards');
+    }
     card.parent.removeChild(card);
-
 }
 
-function placeOnPile(movie) {
+function placeOnPile(movies) {
     // if (!pile.children.some(function(m) {
     //         return m.movie_id === movie.movie_id;
     //     })) {
-    var x = getRandomInt(0, pile.width),
-        y = getRandomInt(0, pile.height),
-        rotation = getRandomDouble(-0.5, 0.5);
+    console.log(movies);
+    var padding = {
+        x: 200,
+        y: 200
+    };
+    movies.forEach(function (movie) {
+        var x = getRandomInt(0 + padding.x, pile.width - padding.x),
+            y = getRandomInt(0 + padding.y, pile.height - padding.y),
+            rotation = getRandomDouble(-0.5, 0.5);
 
-    console.log(rotation);
-    var card = Card(new Point(x, y), movie, rotation);
+        var card = Card(new Point(x, y), movie, {movable: true}, rotation);
 
-    pile.addChild(card);
+        pile.addChild(card);
+    });
+
     // }
 
+}
+
+function newRound() {
+    stage.removeChild(hand);
+    createHand(getRandomCardList(randomMovies, 5), stage, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+        movable: true,
+        droppable: true
+    });
+    pile.removeChildren();
+
+}
+
+function resumeCards(oldCards) {
+    cards = oldCards;
 }
