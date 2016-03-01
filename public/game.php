@@ -22,6 +22,7 @@ sec_session_start();
         <script src="//code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
         <script src="/js/pixi.js"></script>
         <script src="/js/tween.js"></script>
+        <script src="/js/howler.js"></script>
     </head>
     <body>
         <?php if (true) : ?>
