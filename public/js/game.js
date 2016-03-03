@@ -110,7 +110,11 @@ $(window).on('beforeunload', function() {
 
 function updateScore(data) {
   currentUser.score += data.score;
-  currentScore.text = "Your score: " + currentUser.score;
+  currentScore.text = currentUser.score;
+  new TWEEN.Tween(currentScore.scale).to({
+    x: 1.2,
+    y: 1.2
+  }, 200).repeat(1).yoyo(true).start();
 }
 
 function loadPlaceholders() {
@@ -118,25 +122,34 @@ function loadPlaceholders() {
     .add("card", "images/card.png")
     .add("blank_card", "images/back_card.png")
     .add("avatar", "images/avatar-placeholder.png")
+    .add("background", "images/background.jpg")
     .load(setup);
 }
 
 
 var card_w = 84,
-  card_h = 124;
+    card_h = 124;
 // var card_w = 80;
 // var card_h = card_w * 16.0 / 9.0;
 
 
-var currentScore = new PIXI.Text(
-  "Your score : 0", {
+var score = new PIXI.Text(
+  "Your score : ", {
     font: "40px sans-serif",
     fill: "white"
   }
 );
 
-currentScore.position.set(50, 50);
-stage.addChild(currentScore);
+currentScore = new PIXI.Text('0', {
+    font: "40px sans-serif",
+    fill: "white"
+  });
+
+score.addChild(currentScore);
+currentScore.position.x = score.width;
+currentScore.scale.set(1,1);
+score.position.set(50, 50);
+stage.addChild(score);
 
 // var waitingText = new PIXI.Text(
 //   "Waiting for players...", {
@@ -161,7 +174,6 @@ function BlankCard(position, rotation) {
   background.addChild(sticker);
   return background;
 }
-
 
 function Card(position, movie, options, rotation) {
 
@@ -223,9 +235,7 @@ function Card(position, movie, options, rotation) {
       new TWEEN.Tween(this.scale).to({
         x: 1.1,
         y: 1.1
-      }, 300).easing(TWEEN.Easing.Elastic.Out).onComplete(function () {
-        // container.lookAtSound.play();
-      }).start();
+      }, 300).easing(TWEEN.Easing.Elastic.Out).start();
     })
     .on('mouseout', function() {
       new TWEEN.Tween(this.scale).to({
@@ -376,12 +386,17 @@ function setup() {
     cards = getRandomCardList(randomMovies, 5);
     socket.emit('userHand', currentUser.username, cards);
   }
+  var background = new Sprite.fromImage('images/background.jpg');
+  background.alpha = 0.1;
+  background.width = window.innerWidth;
+  background.height = window.innerHeight;
 
+  stage.addChildAt(background,0);
   stage.addChildAt(createPile(
     new Point((window.innerWidth - 500) * 0.5, (window.innerHeight - 500) * 0.5), {
       width: 500,
       height: 500
-    }), 0);
+    }), 1);
   hand = createHand(cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
     movable: true,
     droppable: true
@@ -545,8 +560,6 @@ function placeOnPile(movies) {
     }, 500).easing(TWEEN.Easing.Bounce.Out).start();
     pile.addChild(card);
   });
-
-  // }
 
 }
 
