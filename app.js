@@ -10,7 +10,7 @@ var movies = [];
 var pile = [];
 var playersFinished = 0;
 
-
+//
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
 var connection = mysql.createConnection({
@@ -175,6 +175,8 @@ function updateScore(assignedTo, assignedBy, movie) {
             score: 10
         });
     } else {
+      //TODO make scoring system better
+      //multipliers, bonuses, etc.
         addCollaborator(assignedTo, assignedBy, movie);
         var collaborators = suggested[assignedTo][movie];
         for (var i = 0; i < collaborators.length - 1; i++) {

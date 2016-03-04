@@ -109,6 +109,15 @@ $(window).on('beforeunload', function() {
 
 
 function updateScore(data) {
+  if (data.score > 10) {
+    new Howl({
+      urls: ['sounds/score_collab.wav']
+    }).play();
+  } else {
+    new Howl({
+      urls: ['sounds/score_match.wav']
+    }).play();
+  }
   currentUser.score += data.score;
   currentScore.text = currentUser.score;
   new TWEEN.Tween(currentScore.scale).to({
@@ -140,6 +149,29 @@ var score = new PIXI.Text(
   }
 );
 
+var time = 30;
+var timeText = new PIXI.Text('0', {
+    font: "40px sans-serif",
+    fill: "white"
+  });
+timeText.position.x = 50;
+timeText.position.y = 110;
+function startTime() {
+  setInterval(updateTime, 1000);
+}
+function updateTime() {
+  time--;
+  if (time < 0) {
+    socket.emit('outOfCards');
+  }
+  var seconds = time % 60;
+  var minutes = parseInt(time / 60);
+
+  timeText.text = minutes + " : " + seconds;
+
+}
+
+
 currentScore = new PIXI.Text('0', {
     font: "40px sans-serif",
     fill: "white"
@@ -150,6 +182,9 @@ currentScore.position.x = score.width;
 currentScore.scale.set(1,1);
 score.position.set(50, 50);
 stage.addChild(score);
+stage.addChild(timeText);
+
+startTime();
 
 // var waitingText = new PIXI.Text(
 //   "Waiting for players...", {
@@ -564,6 +599,7 @@ function placeOnPile(movies) {
 }
 
 function newRound() {
+  time = 30;
   stage.removeChild(hand);
   cards = getRandomCardList(randomMovies, 5);
   hand = createHand(cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
