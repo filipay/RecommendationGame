@@ -26,7 +26,9 @@ socket.on('placeOnPile', placeOnPile);
 socket.on('createPile', createPile);
 socket.on('gameSize', gameSize);
 socket.on('newRound', newRound);
-socket.on('resume', resumeCards);
+socket.on('resume', resume);
+socket.on('updateLeaderboard', updateLeaderboard);
+socket.on('startTime', startTime);
 
 var renderer = PIXI.autoDetectRenderer(
   width, height, {
@@ -99,6 +101,7 @@ function User(name, username, movieList, avatar) {
   this.username = username;
   this.avatar = avatar || 'images/avatar-placeholder.png';
   this.movieList = movieList;
+  this.cards = undefined;
   this.score = 0;
 }
 
@@ -143,34 +146,49 @@ var card_w = 84,
 
 
 var score = new PIXI.Text(
-  "Your score : ", {
+  "Score : ", {
     font: "40px sans-serif",
     fill: "white"
   }
 );
 
 var time = 30;
+var timer;
 var timeText = new PIXI.Text('0', {
     font: "40px sans-serif",
     fill: "white"
   });
 timeText.position.x = 50;
 timeText.position.y = 110;
+
 function startTime() {
-  setInterval(updateTime, 1000);
+  if (timer) clearInterval(timer);
+  time = 30;
+  timer = setInterval(updateTime, 1000);
 }
 function updateTime() {
   time--;
-  if (time < 0) {
+  timeText.text = pad(time);
+  if (time < 1) {
     socket.emit('outOfCards');
+    time = 30;
   }
+}
+
+function pad(time) {
+  var time_string = "";
   var seconds = time % 60;
   var minutes = parseInt(time / 60);
 
-  timeText.text = minutes + " : " + seconds;
+  if (seconds < 10) {
+    seconds = "0" + seconds;
+  }
 
+  if (minutes < 10) {
+    minutes = "0" + minutes;
+  }
+  return minutes + " : " + seconds;
 }
-
 
 currentScore = new PIXI.Text('0', {
     font: "40px sans-serif",
@@ -184,18 +202,33 @@ score.position.set(50, 50);
 stage.addChild(score);
 stage.addChild(timeText);
 
-startTime();
 
-// var waitingText = new PIXI.Text(
-//   "Waiting for players...", {
-//     font: "40px sans-serif",
-//     fill: "white"
-//   }
-// );
-// waitingText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
-// waitingText.anchor.set(0.5, 0.5);
-// stage.addChild(waitingText);
+var leaderboard = new Container();
+var leader = new Text('', {
+  font: "30px sans-serif",
+  fill: "yellow"
+});
+var others = new Text('', {
+  font: "20px sans-serif",
+  fill: "white"
+});
 
+leader.position = new Point(0,0);
+others.position = new Point(0,50);
+leaderboard.addChild(leader);
+leaderboard.addChild(others);
+leaderboard.position = new Point(window.innerWidth * 0.8, 50);
+
+stage.addChild(leaderboard);
+
+
+function updateLeaderboard(players) {
+  leader.text = players[0].name + ": " + players[0].score;
+  others.text = '';
+  for (var i = 1; i < players.length; i++) {
+    others.text += players[i].name + ": " + players[i].score + '\n';
+  }
+}
 
 function BlankCard(position, rotation) {
   var background = new Sprite(resources.card.texture);
@@ -417,9 +450,9 @@ function createPile(position, size) {
 
 
 function setup() {
-  if (!cards) {
-    cards = getRandomCardList(randomMovies, 5);
-    socket.emit('userHand', currentUser.username, cards);
+  if (!currentUser.cards) {
+    currentUser.cards = getRandomCardList(randomMovies, 5);
+    socket.emit('userHand', currentUser.username, currentUser.cards);
   }
   var background = new Sprite.fromImage('images/background.jpg');
   background.alpha = 0.1;
@@ -432,7 +465,7 @@ function setup() {
       width: 500,
       height: 500
     }), 1);
-  hand = createHand(cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+  hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
     movable: true,
     droppable: true
   });
@@ -440,6 +473,8 @@ function setup() {
 
   socket.emit('requestPile');
   socket.emit('requestTable');
+  socket.emit('requestLeaderboard');
+  startTime();
   display = stage;
   requestAnimationFrame(animate);
 
@@ -500,7 +535,7 @@ function onDragEnd() {
     new TWEEN.Tween(this.assignedTo.children[0].scale).to({
       x: 0.5,
       y: 0.5
-    },200).repeat(1).yoyo(true).start();
+    },100).repeat(1).yoyo(true).start();
   } else {
     new TWEEN.Tween(this.position).to({
       x: this.origin.x,
@@ -599,19 +634,19 @@ function placeOnPile(movies) {
 }
 
 function newRound() {
-  time = 30;
+  socket.emit('requestResetTime');
   stage.removeChild(hand);
-  cards = getRandomCardList(randomMovies, 5);
-  hand = createHand(cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+  currentUser.cards = getRandomCardList(randomMovies, 5);
+  hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
     movable: true,
     droppable: true
   });
   stage.addChild(hand);
-  socket.emit('userHand', currentUser.username, cards);
+  socket.emit('userHand', currentUser.username, currentUser.cards);
   pile.removeChildren();
-
 }
 
-function resumeCards(oldCards) {
-  cards = oldCards;
+function resume(player) {
+  currentUser.score = player.score;
+  currentUser.cards = player.cards;
 }

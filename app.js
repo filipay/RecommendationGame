@@ -45,8 +45,9 @@ exports.initGame = function(s_io, socket) {
     gameSocket.on('gameSize', amountOfPlayers);
     gameSocket.on('requestPile', sendPile);
     gameSocket.on('requestTable', sendTable);
+    gameSocket.on('requestLeaderboard', sendLeaderboard);
     gameSocket.on('userHand', userHand);
-
+    gameSocket.on('requestResetTime', resetTime);
 };
 
 function possibleMovies(player_movies) {
@@ -70,7 +71,7 @@ function playerConnect(player) {
     var joinedPlayer = joinedPlayers[player.username];
     if (joinedPlayer) {
         this.emit('loadAssets', joinedPlayer.availableMovies);
-        this.emit('resume', joinedPlayer.cards);
+        this.emit('resume', joinedPlayer);
         players.push(joinedPlayer);
     } else {
         joinedPlayers[player.username] = player;
@@ -79,7 +80,7 @@ function playerConnect(player) {
         this.emit('loadAssets', player.availableMovies);
         players.push(player);
     }
-
+    io.sockets.emit('startTime');
 
     // if (players.indexOf(player) < 0) {
     //
@@ -95,29 +96,18 @@ function playerConnect(player) {
 
 
 function playerDisconnect() {
-    // var player = players[this.id];
-    // if (player) {
-    //     console.log(player.username + ' disconnected!');
-    //     player = undefined;
-    //     io.sockets.emit('playerJoined', players);
-    // }
-    console.log(players);
-    var disconnected = this.id;
-    console.log("disconnected id " + disconnected);
-    // console.log(this);
 
-    // console.log(disconnected);
+    var disconnected = this.id;
+
     players.some(function(player) {
         if (player.socket === disconnected) {
             return (disconnected = player);
         }
         return false;
     });
-    console.log('==========================================');
-    console.log(disconnected);
 
     players.splice(players.indexOf(disconnected), 1);
-    console.log(players);
+
     io.sockets.emit('playerJoined', players);
 }
 
@@ -139,14 +129,14 @@ function cardAssigned(data) {
             assignedPlayer = player;
         }
     });
-
+    this.username = data.assignedBy;
     updateScore(assignedPlayer, this, data.movie_id);
     var chosen_movie = getMovie(data.movie_id);
     pile.push(chosen_movie);
     // console.log(chosen_movie);
 
-    console.log(suggested);
-    console.log(chosen_movie);
+    // console.log(suggested);
+    // console.log(chosen_movie);
     io.sockets.emit('placeOnPile', [chosen_movie]);
 }
 
@@ -167,10 +157,11 @@ function addCollaborator(assignedTo, assignedBy, movie) {
 }
 
 function updateScore(assignedTo, assignedBy, movie) {
+
     if (assignedTo.movieList.some(function(userMovie) {
             return userMovie.movie_id === movie;
         })) {
-        console.log('MATCH FOUND');
+        joinedPlayers[assignedBy.username].score += 10;
         assignedBy.emit('updateScore', {
             score: 10
         });
@@ -179,16 +170,24 @@ function updateScore(assignedTo, assignedBy, movie) {
       //multipliers, bonuses, etc.
         addCollaborator(assignedTo, assignedBy, movie);
         var collaborators = suggested[assignedTo][movie];
-        for (var i = 0; i < collaborators.length - 1; i++) {
-            collaborators[i].emit('updateScore', {
-                score: (collaborators.length - i + 1) * 10
-            });
+        if (collaborators.length > 1) {
+          for (var i = 0; i < collaborators.length; i++) {
+              var score = (collaborators.length - i + 1) * 10;
+              // console.log('================COLLABORATOR=================');
+              // console.log(collaborators[i]);
+              joinedPlayers[collaborators[i].username].score += score;
+              collaborators[i].emit('updateScore', {
+                  score: score,
+              });
+          }
         }
     }
+    sendLeaderboard();
 }
 
 function outOfCards() {
     console.log('playersFinished = ' + playersFinished);
+    console.log('playerLen = ' + players.length);
     playersFinished++;
     if (playersFinished == players.length) {
         console.log('newROUND!!!!');
@@ -207,6 +206,31 @@ function sendTable() {
     io.sockets.emit('playerJoined', players);
 }
 
+function sendLeaderboard() {
+    // var sortedPlayers = players.slice().sort(function (p1, p2) {
+    //   return p1.score - p2.score;
+    // });
+    var leaderboard = [];
+    for (var player in joinedPlayers) {
+      if (joinedPlayers.hasOwnProperty(player)) {
+        var score = {
+          name: joinedPlayers[player].name,
+          score: joinedPlayers[player].score
+        };
+        leaderboard.push(score);
+      }
+    }
+    leaderboard.sort(function (p1, p2) {
+      return p2.score - p1.score;
+    });
+    io.sockets.emit('updateLeaderboard', leaderboard);
+
+}
+
 function userHand(username, cards) {
     joinedPlayers[username].cards = cards;
+}
+
+function resetTime() {
+  io.sockets.emit('startTime');
 }
