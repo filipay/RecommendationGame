@@ -1,3 +1,5 @@
+
+
 var mysql = require('mysql');
 var http = require('http');
 
@@ -9,7 +11,8 @@ var suggested = {};
 var movies = [];
 var pile = [];
 var playersFinished = 0;
-
+var timer;
+var time = 0;
 //
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
@@ -31,23 +34,23 @@ connection.query('SELECT * FROM movies', function(err, rows, fields) {
     // console.log(movies);
 });
 
-connection.end();
-
 exports.initGame = function(s_io, socket) {
-    "use strict";
     io = s_io;
     gameSocket = socket;
 
+    gameSocket.on('connected', getUser);
     gameSocket.on('joinGame', playerConnect);
     gameSocket.on('assignCard', cardAssigned);
     gameSocket.on('disconnect', playerDisconnect);
-    gameSocket.on('outOfCards', outOfCards);
+    gameSocket.on('roundFinished', roundFinished);
     gameSocket.on('gameSize', amountOfPlayers);
     gameSocket.on('requestPile', sendPile);
     gameSocket.on('requestTable', sendTable);
     gameSocket.on('requestLeaderboard', sendLeaderboard);
     gameSocket.on('userHand', userHand);
     gameSocket.on('requestResetTime', resetTime);
+    gameSocket.on('getUser', getUser);
+    gameSocket.on('shakeCard', shakeCard);
 };
 
 function possibleMovies(player_movies) {
@@ -67,7 +70,33 @@ function amountOfPlayers() {
     this.emit('gameSize', players.length);
 }
 
+function getUser() {
+    var id = players.length + 2;
+    var socket = this;
+    var user = {
+      name: '',
+      username: '',
+      movies: []
+    };
+    connection.query('SELECT users.name, users.username, movies.* FROM movies, user_movies, users WHERE user_movies.user_id = '+id+' AND user_movies.movie_id = movies.movie_id AND users.id = user_movies.user_id', function (err, rows, fields) {
+      if (err) throw err;
+
+      user.name = rows[0].name || rows[0].username;
+      user.username = rows[0].username;
+      rows.forEach(function (row) {
+        var movie = {
+          movie_id: row.movie_id,
+          title: row.title,
+          poster_url: row.poster_url
+        };
+        user.movies.push(movie);
+      });
+      socket.emit('setUser', user);
+    });
+}
+
 function playerConnect(player) {
+
     var joinedPlayer = joinedPlayers[player.username];
     if (joinedPlayer) {
         this.emit('loadAssets', joinedPlayer.availableMovies);
@@ -80,17 +109,12 @@ function playerConnect(player) {
         this.emit('loadAssets', player.availableMovies);
         players.push(player);
     }
-    io.sockets.emit('startTime');
-
-    // if (players.indexOf(player) < 0) {
-    //
-    //     // players[player.socket] = player;
-    //     console.log(players);
-    //     // io.sockets.emit('createPile', suggested);
-    // } else {
-    //     console.log("this player already exists");
-    // }
-
+    if (players.length === 2) {
+      io.sockets.emit('startGame');
+      timer = setInterval(function () {
+        time++;
+      }, 1000);
+    }
 }
 
 
@@ -109,6 +133,7 @@ function playerDisconnect() {
     players.splice(players.indexOf(disconnected), 1);
 
     io.sockets.emit('playerJoined', players);
+    clearInterval(timer);
 }
 
 
@@ -157,7 +182,7 @@ function addCollaborator(assignedTo, assignedBy, movie) {
 }
 
 function updateScore(assignedTo, assignedBy, movie) {
-
+  console.log(assignedTo.username);
     if (assignedTo.movieList.some(function(userMovie) {
             return userMovie.movie_id === movie;
         })) {
@@ -168,8 +193,8 @@ function updateScore(assignedTo, assignedBy, movie) {
     } else {
       //TODO make scoring system better
       //multipliers, bonuses, etc.
-        addCollaborator(assignedTo, assignedBy, movie);
-        var collaborators = suggested[assignedTo][movie];
+        addCollaborator(assignedTo.username, assignedBy, movie);
+        var collaborators = suggested[assignedTo.username][movie];
         if (collaborators.length > 1) {
           for (var i = 0; i < collaborators.length; i++) {
               var score = (collaborators.length - i + 1) * 10;
@@ -181,11 +206,18 @@ function updateScore(assignedTo, assignedBy, movie) {
               });
           }
         }
+
+        console.log(suggested);
+        // for (var badname in suggested) {
+        //   if (suggested.hasOwnProperty(badname)) {
+        //     console.log(suggested[badname]);
+        //   }
+        // }
     }
     sendLeaderboard();
 }
 
-function outOfCards() {
+function roundFinished() {
     console.log('playersFinished = ' + playersFinished);
     console.log('playerLen = ' + players.length);
     playersFinished++;
@@ -195,7 +227,6 @@ function outOfCards() {
         io.sockets.emit('newRound');
         playersFinished = 0;
     }
-
 }
 
 function sendPile() {
@@ -228,9 +259,23 @@ function sendLeaderboard() {
 }
 
 function userHand(username, cards) {
+    if (cards.length === 0) {
+      gameOver();
+    }
     joinedPlayers[username].cards = cards;
 }
 
 function resetTime() {
-  io.sockets.emit('startTime');
+  io.sockets.emit('startGame');
+}
+
+function gameOver() {
+  io.sockets.emit('gameOver');
+}
+
+function shakeCard(card) {
+  console.log(card);
+  var playerCards = joinedPlayers[card.username].cards;
+
+  io.sockets.emit('shakeCard', card.username, cards.indexOf(card));
 }

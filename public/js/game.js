@@ -24,12 +24,13 @@ socket.on('playerJoined', createTable);
 socket.on('loadAssets', loadAssets);
 socket.on('placeOnPile', placeOnPile);
 socket.on('createPile', createPile);
-socket.on('gameSize', gameSize);
 socket.on('newRound', newRound);
 socket.on('resume', resume);
 socket.on('updateLeaderboard', updateLeaderboard);
-socket.on('startTime', startTime);
-
+socket.on('startGame', startGame);
+socket.on('setUser', setUser);
+socket.on('gameOver', gameOver);
+socket.on('shakeCard', shakeCard);
 var renderer = PIXI.autoDetectRenderer(
   width, height, {
     antialias: true,
@@ -46,23 +47,18 @@ renderer.backgroundColor = 0x0B5394;
 
 document.body.appendChild(renderer.view);
 
-var cardPlaceSound = ['/sounds/cardPlace1.wav','/sounds/cardPlace2.wav','/sounds/cardPlace3.wav','/sounds/cardPlace4.wav'];
-var cardAssignSound = ['/sounds/cardSlide1.wav','/sounds/cardSlide2.wav','/sounds/cardSlide3.wav','/sounds/cardSlide4.wav','/sounds/cardSlide5.wav','/sounds/cardSlide6.wav','/sounds/cardSlide7.wav','/sounds/cardSlide8.wav'];
-var cardFeelSound = ['/sounds/cardShove1.wav','/sounds/cardShove2.wav','/sounds/cardShove3.wav','/sounds/cardShove4.wav'];
+var cardPlaceSound = ['/sounds/cardPlace1.wav', '/sounds/cardPlace2.wav', '/sounds/cardPlace3.wav', '/sounds/cardPlace4.wav'];
+
+var cardAssignSound = ['/sounds/cardSlide1.wav', '/sounds/cardSlide2.wav', '/sounds/cardSlide3.wav', '/sounds/cardSlide4.wav', '/sounds/cardSlide5.wav', '/sounds/cardSlide6.wav', '/sounds/cardSlide7.wav', '/sounds/cardSlide8.wav'];
+
+var cardFeelSound = ['/sounds/cardShove1.wav', '/sounds/cardShove2.wav', '/sounds/cardShove3.wav', '/sounds/cardShove4.wav'];
+
 var stage = new Container();
-var loadingText = new MovieClip.fromImages('images/start_game.mp4');//new Text(
-//   "Loading...", {
-//     font: "40px sans-serif",
-//     fill: "white"
-//   });
-loadingText.position = new Point();
-loadingText.width = window.innerWidth;
-loadingText.height = window.innerHeight;
+
 var display = new Container();
 
-display.addChild(loadingText);
+socket.emit('getUser');
 requestAnimationFrame(animate);
-loadingText.play();
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -72,14 +68,19 @@ function getRandomDouble(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function gameSize(size) {
-  $.getJSON('/user.php?user_id=' + (size + 2), function(data) {
-    currentUser = new User(data.name, data.username, data.movies);
-    socket.emit('joinGame', currentUser);
-  });
+// function gameSize(size) {
+//   socket.emit('getUser', size + 2);
+//   $.getJSON('/user.php?user_id=' + (size + 2), function(data) {
+//     currentUser = new User(data.name, data.username, data.avatar, data.movies);
+//     socket.emit('joinGame', currentUser);
+//   });
+// }
+var avatar = "https://scontent.xx.fbcdn.net/hprofile-xat1/v/t1.0-1/12191698_907754492605489_7419277089151932070_n.jpg?oh=6699319abd8e9628f2a5aca06a58f03a&oe=57940FC9";
+function setUser(user) {
+  currentUser = new User(user.name, user.username, avatar, user.movies);
+  socket.emit('joinGame', currentUser);
 }
 
-socket.emit('gameSize');
 
 // $.getJSON('/user.php?user_id=' + (socket.emit('gameSize') + 1), function(data) {
 //     currentUser = new User(data.name, data.username, data.movies);
@@ -95,7 +96,7 @@ function loadAssets(movies) {
   loadPlaceholders();
 }
 
-function User(name, username, movieList, avatar) {
+function User(name, username, avatar, movieList) {
   this.name = name || username;
   console.log(name);
   this.username = username;
@@ -140,7 +141,7 @@ function loadPlaceholders() {
 
 
 var card_w = 84,
-    card_h = 124;
+  card_h = 124;
 // var card_w = 80;
 // var card_h = card_w * 16.0 / 9.0;
 
@@ -154,23 +155,24 @@ var score = new PIXI.Text(
 
 var time = 30;
 var timer;
-var timeText = new PIXI.Text('0', {
-    font: "40px sans-serif",
-    fill: "white"
-  });
+var timeText = new PIXI.Text('00:00', {
+  font: "40px sans-serif",
+  fill: "white"
+});
 timeText.position.x = 50;
 timeText.position.y = 110;
 
-function startTime() {
+function startGame() {
   if (timer) clearInterval(timer);
   time = 30;
   timer = setInterval(updateTime, 1000);
 }
+
 function updateTime() {
   time--;
   timeText.text = pad(time);
   if (time < 1) {
-    socket.emit('outOfCards');
+    socket.emit('roundFinished');
     time = 30;
   }
 }
@@ -191,13 +193,13 @@ function pad(time) {
 }
 
 currentScore = new PIXI.Text('0', {
-    font: "40px sans-serif",
-    fill: "white"
-  });
+  font: "40px sans-serif",
+  fill: "white"
+});
 
 score.addChild(currentScore);
 currentScore.position.x = score.width;
-currentScore.scale.set(1,1);
+currentScore.scale.set(1, 1);
 score.position.set(50, 50);
 stage.addChild(score);
 stage.addChild(timeText);
@@ -210,11 +212,11 @@ var leader = new Text('', {
 });
 var others = new Text('', {
   font: "20px sans-serif",
-  fill: "white"
+  fill: "white",
 });
 
-leader.position = new Point(0,0);
-others.position = new Point(0,50);
+leader.position = new Point(0, 0);
+others.position = new Point(0, 50);
 leaderboard.addChild(leader);
 leaderboard.addChild(others);
 leaderboard.position = new Point(window.innerWidth * 0.8, 50);
@@ -236,7 +238,7 @@ function BlankCard(position, rotation) {
   background.anchor.set(0.5, 0.5);
   background.scale.set(0.5, 0.5);
   background.rotation = rotation || 0;
-  var sticker = new Sprite(resources.blank_card.texture)  ;
+  var sticker = new Sprite(resources.blank_card.texture);
   sticker.anchor.set(0.5, 0.5);
   sticker.scale.set(0.9, 0.9);
   background.addChild(sticker);
@@ -254,15 +256,15 @@ function Card(position, movie, options, rotation) {
   container.buttonMode = true;
 
   container.movable = options.movable;
-  container.droppable = options.droppable;
+  container.assignable = options.assignable;
   container.placeSound = new Howl({
-    urls: [cardPlaceSound[getRandomInt(0,cardPlaceSound.length-1)]]
+    urls: [cardPlaceSound[getRandomInt(0, cardPlaceSound.length - 1)]]
   });
   container.assignSound = new Howl({
-    urls: [cardAssignSound[getRandomInt(0,cardAssignSound.length-1)]]
+    urls: [cardAssignSound[getRandomInt(0, cardAssignSound.length - 1)]]
   });
   container.lookAtSound = new Howl({
-    urls: [cardFeelSound[getRandomInt(0,cardFeelSound.length-1)]]
+    urls: [cardFeelSound[getRandomInt(0, cardFeelSound.length - 1)]]
   })
   for (var key in movie) {
     if (movie.hasOwnProperty(key)) {
@@ -327,7 +329,7 @@ function Player(position, user) {
 
   var avatar = new Sprite.fromImage(user.avatar);
   avatar.anchor.set(0.5, 0.5);
-  avatar.width = avatar.height = window.innerHeight * 0.15;
+  avatar.width = avatar.height = window.innerHeight * 0.18;
 
   var username = new Text(
     user.name, {
@@ -336,12 +338,12 @@ function Player(position, user) {
     }
   );
   username.anchor.set(0.5, 0.5);
-  username.position.set(0, -avatar.height * 0.7);
+  username.position.set(0, -avatar.height * 0.6);
 
   var circle = new Graphics();
   circle.lineStyle(0);
   circle.beginFill(0xFFFF0B, 0.5);
-  circle.drawCircle(0, 0, avatar.width + 10);
+  circle.drawCircle(0, 0, avatar.width);
   circle.endFill();
   avatar.addChild(circle);
   avatar.mask = circle;
@@ -349,24 +351,27 @@ function Player(position, user) {
   player.addChild(avatar);
   player.addChild(username);
   // player.addChild(BlankCard(new Point(0, )));
-  player.addChild(createHand(getBlankCardsList(5), new Point(0, avatar.height * 0.7), {
+  player.cards = createHand(getBlankCardsList(5), new Point(0, avatar.height * 0.7), {
+    owner: user.username,
     blank: true,
     space: -50
-  }));
+  });
+  player.addChild(player.cards);
 
 
   return player;
 }
 
 function createHand(movies, position, options, rotation) {
-  var start_angle = 150, end_angle = 210;
+  var start_angle = 150,
+    end_angle = 210;
   var hand = new Container();
   var space = options.space || 10;
   hand.position = position;
-  hand.position.x -= (movies.length-1) * (card_w+space) * 0.5;
+  hand.position.x -= (movies.length - 1) * (card_w + space) * 0.5;
   var origin = new Point(hand.position.x, 200);
   var rad_diff = (end_angle * Math.PI / 180) - (start_angle * Math.PI / 180);
-  console.log(rad_diff);
+
   var rad_step = rad_diff / movies.length;
 
 
@@ -378,13 +383,14 @@ function createHand(movies, position, options, rotation) {
     var point = new Point(x, 0);
     var card = !options.blank ? Card(origin, movies[i], options) :
       BlankCard(new Point(x, 0), rot);
+    card.owner = options.owner;
     if (!options.blank) {
-    new TWEEN.Tween(card.position).to({
+      new TWEEN.Tween(card.position).to({
         x: point.x,
         y: point.y
-    }, 100).easing(TWEEN.Easing.Elastic.Out).delay(200).onComplete(function () {
+      }, 100).easing(TWEEN.Easing.Elastic.Out).delay(200).onComplete(function() {
         card.placeSound.play();
-    }).start();
+      }).start();
     }
     hand.addChild(card);
   }
@@ -414,7 +420,7 @@ function createTable(players) {
       y += window.innerHeight - 200;
 
       var point = new Point(x, y);
-      var seat = Player(origin, new User(player.name, player.username));
+      var seat = Player(origin, new User(player.name, player.username, player.avatar));
       new TWEEN.Tween(seat.position).to({
         x: point.x,
         y: point.y
@@ -459,22 +465,22 @@ function setup() {
   background.width = window.innerWidth;
   background.height = window.innerHeight;
 
-  stage.addChildAt(background,0);
+  stage.addChildAt(background, 0);
   stage.addChildAt(createPile(
     new Point((window.innerWidth - 500) * 0.5, (window.innerHeight - 500) * 0.5), {
       width: 500,
       height: 500
     }), 1);
   hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+    owner: currentUser.username,
     movable: true,
-    droppable: true
+    assignable: true
   });
   stage.addChildAt(hand, stage.children.length - 1);
 
   socket.emit('requestPile');
   socket.emit('requestTable');
   socket.emit('requestLeaderboard');
-  startTime();
   display = stage;
   requestAnimationFrame(animate);
 
@@ -535,13 +541,15 @@ function onDragEnd() {
     new TWEEN.Tween(this.assignedTo.children[0].scale).to({
       x: 0.5,
       y: 0.5
-    },100).repeat(1).yoyo(true).start();
+    }, 100).repeat(1).yoyo(true).start();
   } else {
     new TWEEN.Tween(this.position).to({
       x: this.origin.x,
       y: this.origin.y
     }, 600).easing(TWEEN.Easing.Elastic.Out).start();
   }
+  if (this.assignable) { socket.emit('shakeCard', this); }
+  
 
 
   this.alpha = 1;
@@ -560,7 +568,7 @@ function onDragMove() {
 
     this.position.x = newPosition.x;
     this.position.y = newPosition.y;
-    if (this.droppable) isCardOnPlayer(this);
+    if (this.assignable) isCardOnPlayer(this);
   }
 }
 
@@ -593,6 +601,18 @@ function onPlayerHoverOut(player) {
   };
 }
 
+function shakeCard(username, cardIndex) {
+  var player;
+  table.children.some(function (child) {
+    if (child.username === username) {
+      player = child;
+      return true;
+    }
+  });
+
+  player.cards.children[cardIndex].scale.set(1.2,1.2);
+}
+
 function assignCard(card) {
   console.log(card);
   socket.emit('assignCard', {
@@ -601,7 +621,7 @@ function assignCard(card) {
     movie_id: card.movie_id
   });
   if (card.parent.children.length == 1) {
-    socket.emit('outOfCards');
+    socket.emit('roundFinished');
   }
   card.parent.removeChild(card);
 }
@@ -623,7 +643,7 @@ function placeOnPile(movies) {
     var card = Card(new Point(x, y), movie, {
       movable: true
     }, rotation);
-    card.scale.set(0.0,0.0);
+    card.scale.set(0.0, 0.0);
     new TWEEN.Tween(card.scale).to({
       x: "+1",
       y: "+1"
@@ -638,8 +658,9 @@ function newRound() {
   stage.removeChild(hand);
   currentUser.cards = getRandomCardList(randomMovies, 5);
   hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
+    owner: currentUser.username,
     movable: true,
-    droppable: true
+    assignable: true
   });
   stage.addChild(hand);
   socket.emit('userHand', currentUser.username, currentUser.cards);
@@ -649,4 +670,30 @@ function newRound() {
 function resume(player) {
   currentUser.score = player.score;
   currentUser.cards = player.cards;
+}
+
+function gameOver() {
+  clearInterval(timer);
+  var gameOverText = new Text('GAME OVER', {
+    font: "100px sans-serif",
+    fill: "red"
+  });
+
+  var winner =  new Text(leader.text.substring(0, leader.text.indexOf(':')) + ' wins!', {
+      font: "60px sans-serif",
+      fill: "yellow"
+  });
+  hand.visible = false;
+  table.visible = false;
+  pile.visible = false;
+  gameOverText.position = new Point((window.innerWidth - gameOverText.width)*0.5, (window.innerHeight - gameOverText.height)*0.5);
+  winner.position = new Point((gameOverText.width - winner.width)*0.5, 120);
+
+  gameOverText.addChild(winner);
+  stage.addChild(gameOverText);
+  gameOverText.scale.set(0,0);
+  new TWEEN.Tween(gameOverText.scale).to({
+    x: 1.0,
+    y: 1.0
+  }).easing(TWEEN.Easing.Bounce.Out).start();
 }
