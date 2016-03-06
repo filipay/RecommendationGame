@@ -1,23 +1,38 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-    <title>Recommender Card Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #000000;
-        }
-    </style>
-    <script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
-    <script src="//code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
-    <script src="js/pixi.js"></script>
-    <script src="js/howler.js"></script>
-    <script src="js/tween.js"></script>
-    <!--<script src="js/card.js"></script>-->
+  <link rel="stylesheet" type="text/css" href="css/main.css" />
+  <title>Recommender Card Game</title>
+  <script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+  <script src="//code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+  <script src="js/pixi.js"></script>
+  <script src="js/howler.js"></script>
+  <script src="js/tween.js"></script>
+  <script src="js/add_movies.js"></script>
 </head>
 <body>
-<script src="/socket.io/socket.io.js"></script>
-<script src="js/game.js"></script>
+
+  <script src="/js/facebook.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- <fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
+  </fb:login-button> -->
+  <div id="main-screen">
+    <script src="js/game.js"></script>
+  </div>
+  <script id="movies" type="text/template">
+    <input type="text" placeholder="Search movie" name="search"/>
+    <input type="submit" onClick="searchMovies()"/>
+    <div class="results">
+        <div class="movie">
+            <div>
+                <img class="poster" src="/images/placeholder_poster.png">
+            </div>
+            <div class="title"></div>
+            <button type="button">+</button>
+        </div>
+    </div>
+  </script>
+
 </body>
+
 </html>

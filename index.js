@@ -1,10 +1,14 @@
-var app = require('express')();
-var server = require('http').createServer(app);
-var io = require('socket.io').listen(server);
+var express = require('express');
+var path = require('path');
+
+var app = express();
 
 var game = require('./app');
 
-server.listen(3000);
+app.use(express.static(path.join(__dirname,'public')));
+
+var server = require('http').createServer(app).listen(process.env.PORT || 8080);
+var io = require('socket.io').listen(server);
 
 io.sockets.on('connection', function (socket) {
     "use strict";

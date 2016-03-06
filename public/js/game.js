@@ -611,8 +611,8 @@ function shakeCard(username, cardIndex, remove) {
     return child.username === username;
   });
   if (player) {
+    console.log(player);
     var card = player.cards.children[cardIndex];
-
     if (remove) {
       new TWEEN.Tween(card.scale).to({
         x: 0,
