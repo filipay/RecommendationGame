@@ -227,6 +227,7 @@ function roundFinished() {
         io.sockets.emit('newRound');
         playersFinished = 0;
     }
+    // io.sockets.emit('gameOver');
 }
 
 function sendPile() {
@@ -275,7 +276,5 @@ function gameOver() {
 
 function shakeCard(card) {
   console.log(card);
-  var playerCards = joinedPlayers[card.username].cards;
-
-  io.sockets.emit('shakeCard', card.username, cards.indexOf(card));
+  io.sockets.emit('shakeCard', card.username, card.index, card.remove);
 }

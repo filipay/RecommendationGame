@@ -18,7 +18,7 @@ var Container = PIXI.Container,
   Text = PIXI.Text,
   Point = PIXI.Point;
 
-var socket = io.connect('http://localhost:3000');
+var socket = io.connect();
 socket.on('updateScore', updateScore);
 socket.on('playerJoined', createTable);
 socket.on('loadAssets', loadAssets);
@@ -321,7 +321,7 @@ function Card(position, movie, options, rotation) {
   return container;
 }
 
-function Player(position, user) {
+function Player(position, user, handSize) {
   var player = new Container();
   player.position.x = position.x;
   player.position.y = position.y;
@@ -329,7 +329,7 @@ function Player(position, user) {
 
   var avatar = new Sprite.fromImage(user.avatar);
   avatar.anchor.set(0.5, 0.5);
-  avatar.width = avatar.height = window.innerHeight * 0.18;
+  avatar.width = avatar.height = 200;
 
   var username = new Text(
     user.name, {
@@ -338,12 +338,12 @@ function Player(position, user) {
     }
   );
   username.anchor.set(0.5, 0.5);
-  username.position.set(0, -avatar.height * 0.6);
+  username.position.set(0, -avatar.height * 0.4);
 
   var circle = new Graphics();
   circle.lineStyle(0);
   circle.beginFill(0xFFFF0B, 0.5);
-  circle.drawCircle(0, 0, avatar.width);
+  circle.drawCircle(0, 0, avatar.width*0.5);
   circle.endFill();
   avatar.addChild(circle);
   avatar.mask = circle;
@@ -351,14 +351,14 @@ function Player(position, user) {
   player.addChild(avatar);
   player.addChild(username);
   // player.addChild(BlankCard(new Point(0, )));
-  player.cards = createHand(getBlankCardsList(5), new Point(0, avatar.height * 0.7), {
-    owner: user.username,
+
+  player.cards = createHand(getBlankCardsList(handSize), new Point(0, avatar.height * 0.4), {
     blank: true,
     space: -50
   });
   player.addChild(player.cards);
 
-
+console.log(player);
   return player;
 }
 
@@ -374,7 +374,6 @@ function createHand(movies, position, options, rotation) {
 
   var rad_step = rad_diff / movies.length;
 
-
   for (i = 0; i < movies.length; i++) {
 
     var x = i * (card_w + space);
@@ -383,7 +382,7 @@ function createHand(movies, position, options, rotation) {
     var point = new Point(x, 0);
     var card = !options.blank ? Card(origin, movies[i], options) :
       BlankCard(new Point(x, 0), rot);
-    card.owner = options.owner;
+
     if (!options.blank) {
       new TWEEN.Tween(card.position).to({
         x: point.x,
@@ -392,6 +391,8 @@ function createHand(movies, position, options, rotation) {
         card.placeSound.play();
       }).start();
     }
+    card.index = i;
+    card.scale = card.scale || new Point(1,1);
     hand.addChild(card);
   }
 
@@ -403,7 +404,6 @@ function createHand(movies, position, options, rotation) {
 var table = new Container();
 
 function createTable(players) {
-
   stage.removeChild(table);
   table = new Container();
   var angle_step = players.length > 2 ? -Math.PI / players.length : -Math.PI * 0.5; //-Math.PI * 0.5;
@@ -420,7 +420,7 @@ function createTable(players) {
       y += window.innerHeight - 200;
 
       var point = new Point(x, y);
-      var seat = Player(origin, new User(player.name, player.username, player.avatar));
+      var seat = Player(origin, new User(player.name, player.username, player.avatar), player.cards.length || 5);
       new TWEEN.Tween(seat.position).to({
         x: point.x,
         y: point.y
@@ -472,7 +472,6 @@ function setup() {
       height: 500
     }), 1);
   hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
-    owner: currentUser.username,
     movable: true,
     assignable: true
   });
@@ -524,6 +523,13 @@ function onDragStart(event) {
   // store a reference to the data
   // the reason for this is because of multitouch
   // we want to track the movement of this particular touch
+  if (!this.dragging) {
+      socket.emit('shakeCard',{
+      index : this.index,
+      movie_id: this.movie_id,
+      username: currentUser.username
+    });
+  }
   if (this.movable) {
     this.data = event.data;
     this.alpha = 0.8;
@@ -531,6 +537,7 @@ function onDragStart(event) {
     this.player = undefined;
     this.origin = new PIXI.Point(this.position.x, this.position.y);
   }
+
 }
 
 function onDragEnd() {
@@ -548,9 +555,6 @@ function onDragEnd() {
       y: this.origin.y
     }, 600).easing(TWEEN.Easing.Elastic.Out).start();
   }
-  if (this.assignable) { socket.emit('shakeCard', this); }
-  
-
 
   this.alpha = 1;
 
@@ -584,7 +588,6 @@ function isCardOnPlayer(card) {
       return (card.assignedTo = undefined);
     }
   });
-  console.log(card.assignedTo);
 }
 
 function onPlayerHover(player) {
@@ -601,24 +604,39 @@ function onPlayerHoverOut(player) {
   };
 }
 
-function shakeCard(username, cardIndex) {
+function shakeCard(username, cardIndex, remove) {
   var player;
   table.children.some(function (child) {
-    if (child.username === username) {
-      player = child;
-      return true;
-    }
+    if (child.username === username) player = child;
+    return child.username === username;
   });
+  if (player) {
+    var card = player.cards.children[cardIndex];
 
-  player.cards.children[cardIndex].scale.set(1.2,1.2);
+    if (remove) {
+      new TWEEN.Tween(card.scale).to({
+        x: 0,
+        y: 0
+      },200).start();
+    } else {
+      new TWEEN.Tween(card.scale).to({
+        x: 0.8,
+        y: 0.8
+      }, 300).repeat(1).yoyo(true).easing(TWEEN.Easing.Elastic.Out).start();
+    }
+  }
 }
 
 function assignCard(card) {
-  console.log(card);
   socket.emit('assignCard', {
     assignedBy: currentUser.username,
     assignedTo: card.assignedTo.username,
     movie_id: card.movie_id
+  });
+  socket.emit('shakeCard', {
+    index: card.index,
+    username: currentUser.username,
+    remove: true
   });
   if (card.parent.children.length == 1) {
     socket.emit('roundFinished');
@@ -658,42 +676,65 @@ function newRound() {
   stage.removeChild(hand);
   currentUser.cards = getRandomCardList(randomMovies, 5);
   hand = createHand(currentUser.cards, new Point(window.innerWidth * 0.5, window.innerHeight * 0.9), {
-    owner: currentUser.username,
     movable: true,
     assignable: true
   });
   stage.addChild(hand);
   socket.emit('userHand', currentUser.username, currentUser.cards);
+  console.log(table);
+  table.children.forEach(function (player) {
+    player.cards.children.forEach(function (card) {
+        card.scale.set(0.5,0.5);
+    });
+  });
   pile.removeChildren();
 }
 
 function resume(player) {
   currentUser.score = player.score;
+  currentScore.text = player.score;
   currentUser.cards = player.cards;
 }
 
 function gameOver() {
   clearInterval(timer);
-  var gameOverText = new Text('GAME OVER', {
+  var gameOverText = new Text('Thanks for playing!', {
     font: "100px sans-serif",
-    fill: "red"
+    fill: "white"
   });
 
   var winner =  new Text(leader.text.substring(0, leader.text.indexOf(':')) + ' wins!', {
       font: "60px sans-serif",
       fill: "yellow"
   });
-  hand.visible = false;
-  table.visible = false;
-  pile.visible = false;
+
+  new TWEEN.Tween(table).to({
+    alpha: 0
+  }, 800).onComplete(function () {
+    table.visible = false;
+  }).start();
+
+  new TWEEN.Tween(hand).to({
+    alpha: 0
+  }, 800).onComplete(function () {
+    hand.visible = false;
+  }).start();
+
+  new TWEEN.Tween(pile).to({
+    alpha: 0
+  }, 800).onComplete(function () {
+    pile.visible = false;
+  }).start();
+
+
+
   gameOverText.position = new Point((window.innerWidth - gameOverText.width)*0.5, (window.innerHeight - gameOverText.height)*0.5);
   winner.position = new Point((gameOverText.width - winner.width)*0.5, 120);
 
   gameOverText.addChild(winner);
   stage.addChild(gameOverText);
-  gameOverText.scale.set(0,0);
+  gameOverText.scale.set(0,1);
   new TWEEN.Tween(gameOverText.scale).to({
     x: 1.0,
-    y: 1.0
   }).easing(TWEEN.Easing.Bounce.Out).start();
 }
