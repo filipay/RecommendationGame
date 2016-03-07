@@ -51,6 +51,7 @@ exports.initGame = function(s_io, socket) {
     gameSocket.on('requestResetTime', resetTime);
     gameSocket.on('getUser', getUser);
     gameSocket.on('shakeCard', shakeCard);
+    gameSocket.on('updateUser',updateUser);
 };
 
 function possibleMovies(player_movies) {
@@ -277,4 +278,9 @@ function gameOver() {
 function shakeCard(card) {
   console.log(card);
   io.sockets.emit('shakeCard', card.username, card.index, card.remove);
+}
+
+function updateUser(movie) {
+  console.log(movie);
+
 }

@@ -1,3 +1,4 @@
+
 function statusChangeCallback(response) {
   console.log('statusChangeCallback');
   console.log(response);
@@ -7,8 +8,8 @@ function statusChangeCallback(response) {
   // for FB.getLoginStatus().
   if (response.status === 'connected') {
     // Logged into your app and Facebook.
-    // $('#main-screen').html($('#movies').html());
-    // prepareMovieSearch();
+    $('#main-screen').html($('#movies').html());
+    prepareMovieSearch();
     // console.log('connected!!!');
     // testAPI();
   } else if (response.status === 'not_authorized') {
