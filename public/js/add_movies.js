@@ -7,19 +7,18 @@ var socket;
 function prepareMovieSearch() {
   socket = io.connect();
   movie_div = $('.row.movies').clone();
-  console.log(movie_div);
+  $('.row.movies').html('');
 
   $("#search").keyup(function(event){
       if(event.keyCode === 13){
           searchMovies();
-
       }
   });
   console.log("Prepare finished");
 }
 
 function searchMovies() {
-
+  $('.row.movies').html(movie_div.clone());
   var search = $('input[name=search]').val();
   var search_url = 'http://api.themoviedb.org/3/search/movie?api_key=b98461ec9d721492b95834ab0a23759d&query='+search;
 

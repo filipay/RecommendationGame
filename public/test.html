@@ -17,50 +17,54 @@
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.2/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
-    <script src="js/pixi.js"></script>
-    <script src="js/howler.js"></script>
-    <script src="js/tween.js"></script>
-    <script src="js/add_movies.js"></script>
+  <script src="js/pixi.js"></script>
+  <script src="js/howler.js"></script>
+  <script src="js/tween.js"></script>
+  <script src="js/add_movies.js"></script>
 </head>
 
 <body>
   <script src="/js/facebook.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <div class="container">
-    <div class="row top-buffer">
-      <div class="col-lg-1-12">
-        <div class="col-sm-4">
-        </div>
-        <div class="col-sm-3">
-          <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search" name="search" id="search">
-            <div class="input-group-btn">
-              <button class="btn btn-default" onclick="searchMovies();"><i class="glyphicon glyphicon-search"></i></button>
+  <div id="main-screen" class="container">
+    <script id="movies" type="text/template">
+      <div class="row top-buffer">
+        <div class="col-lg-1-12">
+          <div class="col-sm-4">
+            <div class="fb-login-button" data-max-rows="1" data-size="large" data-show-faces="false" data-auto-logout-link="true"></div>
+          </div>
+          <div class="col-sm-3">
+            <div class="input-group">
+              <input type="text" class="form-control" placeholder="Search" name="search" id="search">
+              <div class="input-group-btn">
+                <button class="btn btn-default" onclick="searchMovies();"><i class="glyphicon glyphicon-search"></i></button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <div class="row movies top-buffer">
-      <div class="col-md-4">
-        <ul class="list-group">
-          <a href="javascript:void(0)" class="list-group-item" onclick="selected(event)" data-movieid=""></a>
-        </ul>
-      </div>
-      <div class="col-md-8">
-        <div class="row">
-          <div class="col-md-3">
-            <img src=" " alt="" class="img-thumbnail" />
-            <button type="button" class="btn btn-success btn-block">
-              Add
-            </button>
-          </div>
-          <div class="col-md-5">
-            <h1 class="title-poster"></h1><big class="overview"></big>
+      <div class="row movies top-buffer">
+        <div class="col-md-4">
+          <ul class="list-group">
+            <a href="javascript:void(0)" class="list-group-item" onclick="selected(event)" data-movieid=""></a>
+          </ul>
+        </div>
+        <div class="col-md-8">
+          <div class="row">
+            <div class="col-md-3">
+              <img src=" " alt="" class="img-thumbnail" />
+              <button type="button" class="btn btn-success btn-block">
+                Add
+              </button>
+            </div>
+            <div class="col-md-5">
+              <h1 class="title-poster"></h1><big class="overview"></big>
+            </div>
           </div>
         </div>
+
       </div>
-    </div>
+    </script>
 
   </div>
   <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
