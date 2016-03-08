@@ -1,3 +1,4 @@
+var socket;
 
 function statusChangeCallback(response) {
   console.log('statusChangeCallback');
@@ -8,7 +9,10 @@ function statusChangeCallback(response) {
   // for FB.getLoginStatus().
   if (response.status === 'connected') {
     // Logged into your app and Facebook.
+    socket = io.connect();
+    socket.on('setUser', setUser);
     $('#main-screen').html($('#movies').html());
+    getUserInfo();
     prepareMovieSearch();
     // console.log('connected!!!');
     // testAPI();
@@ -82,4 +86,20 @@ function testAPI() {
       'Thanks for logging in, ' + response.name + '!';
     console.log(response);
   });
+}
+
+function getUserInfo() {
+  FB.api('/me', function(response) {
+    FB.me = response;
+    FB.api('/me/picture?height=500', function (response) {
+      FB.me.picture = response.data.url;
+      socket.emit('getUser', FB.me);
+    });
+
+  });
+}
+
+function setUser(user) {
+  console.log('==============================');
+  console.log(user);
 }

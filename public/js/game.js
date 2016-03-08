@@ -75,9 +75,9 @@ function getRandomDouble(min, max) {
 //     socket.emit('joinGame', currentUser);
 //   });
 // }
-var avatar = "https://scontent.xx.fbcdn.net/hprofile-xat1/v/t1.0-1/12191698_907754492605489_7419277089151932070_n.jpg?oh=6699319abd8e9628f2a5aca06a58f03a&oe=57940FC9";
+
 function setUser(user) {
-  currentUser = new User(user.name, user.username, avatar, user.movies);
+  currentUser = new User(user.name, user.facebook_id, user.picture, user.movies);
   socket.emit('joinGame', currentUser);
 }
 
@@ -265,7 +265,7 @@ function Card(position, movie, options, rotation) {
   });
   container.lookAtSound = new Howl({
     urls: [cardFeelSound[getRandomInt(0, cardFeelSound.length - 1)]]
-  })
+  });
   for (var key in movie) {
     if (movie.hasOwnProperty(key)) {
       container[key] = movie[key];
@@ -411,7 +411,7 @@ function createTable(players) {
   var count = 1;
   var origin = new Point(window.innerWidth * 0.5, -200);
   players.forEach(function(player) {
-    if (player.username !== currentUser.username) {
+    if (player.username !== currentUser.facebook_id) {
       var angle = angle_step * count;
       var x = radius * Math.cos(angle);
       var y = radius * Math.sin(angle);
@@ -458,7 +458,7 @@ function createPile(position, size) {
 function setup() {
   if (!currentUser.cards) {
     currentUser.cards = getRandomCardList(randomMovies, 5);
-    socket.emit('userHand', currentUser.username, currentUser.cards);
+    socket.emit('userHand', currentUser.facebook_id, currentUser.cards);
   }
   var background = new Sprite.fromImage('images/background.jpg');
   background.alpha = 0.1;
@@ -527,7 +527,7 @@ function onDragStart(event) {
       socket.emit('shakeCard',{
       index : this.index,
       movie_id: this.movie_id,
-      username: currentUser.username
+      username: currentUser.facebook_id
     });
   }
   if (this.movable) {
@@ -629,13 +629,13 @@ function shakeCard(username, cardIndex, remove) {
 
 function assignCard(card) {
   socket.emit('assignCard', {
-    assignedBy: currentUser.username,
+    assignedBy: currentUser.facebook_id,
     assignedTo: card.assignedTo.username,
     movie_id: card.movie_id
   });
   socket.emit('shakeCard', {
     index: card.index,
-    username: currentUser.username,
+    username: currentUser.facebook_id,
     remove: true
   });
   if (card.parent.children.length == 1) {
@@ -680,7 +680,7 @@ function newRound() {
     assignable: true
   });
   stage.addChild(hand);
-  socket.emit('userHand', currentUser.username, currentUser.cards);
+  socket.emit('userHand', currentUser.facebook_id, currentUser.cards);
   console.log(table);
   table.children.forEach(function (player) {
     player.cards.children.forEach(function (card) {

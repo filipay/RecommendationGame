@@ -5,7 +5,9 @@ var app = express();
 
 var game = require('./app');
 
-app.use(express.static(path.join(__dirname,'public')));
+app.use(express.static(path.join(__dirname,'public'), {
+  extensions: ['html']
+}));
 
 var server = require('http').createServer(app).listen(process.env.PORT || 8080);
 var io = require('socket.io').listen(server);
