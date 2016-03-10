@@ -1,5 +1,5 @@
 var movie_div;
-var image_url = 'http://image.tmdb.org/t/p/w500/';
+var image_url = 'http://image.tmdb.org/t/p/w500';
 var placeholder = 'images/placeholder_poster.png';
 var results = {};
 
@@ -12,6 +12,7 @@ function prepareMovieSearch() {
       searchMovies();
     }
   });
+
   console.log("Prepare finished");
 }
 
@@ -27,8 +28,6 @@ function searchMovies() {
 
     if (movies.results.length > 0) {
       // console.log(movies.Search);
-
-
       results = {};
       movies.results.forEach(function(movie) {
 
@@ -53,6 +52,8 @@ function searchMovies() {
         socket.emit('updateUser', movie);
       });
     }
+    setUserMovies();
+
   });
 }
 
@@ -71,8 +72,21 @@ function selected(event) {
   $('.img-thumbnail').prop('src', movie.poster_path);
 
   $('.btn-success').unbind('click').click(function(e) {
-    movie.me = FB.me;
+    movie.user_id = FB.me.id;
+
     socket.emit('updateUser', movie);
+  });
+}
+
+function setUserMovies() {
+  var listing = movie_div.find('.list-group-item.movie');
+  var movies = $('.list-group.user-movies');
+  movies.html('');
+  FB.me.movies.forEach(function(movie) {
+    var new_listing = listing.clone();
+    new_listing.prepend(movie.title);
+    new_listing.attr('data-movieid', movie.id);
+    movies.append(new_listing);
   });
 
 }

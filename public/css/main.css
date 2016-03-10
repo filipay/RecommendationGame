@@ -6,3 +6,12 @@ body {
   padding: 0px;
   margin: 0px;
 }
+
+.text-overflow {
+  text-overflow: ellipsis;
+}
+
+.limit {
+  max-height: 290px;
+  overflow: hidden;
+}

@@ -1,4 +1,5 @@
 var socket;
+var user;
 
 function statusChangeCallback(response) {
   console.log('statusChangeCallback');
@@ -95,11 +96,9 @@ function getUserInfo() {
       FB.me.picture = response.data.url;
       socket.emit('getUser', FB.me);
     });
-
   });
 }
 
 function setUser(user) {
-  console.log('==============================');
-  console.log(user);
+  FB.me = user;
 }

@@ -57,7 +57,7 @@ var stage = new Container();
 
 var display = new Container();
 
-socket.emit('getUser');
+socket.emit('getUser', FB.me);
 requestAnimationFrame(animate);
 
 function getRandomInt(min, max) {

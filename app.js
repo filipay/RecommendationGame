@@ -286,10 +286,9 @@ function shakeCard(card) {
 }
 
 function updateUser(movie) {
-  console.log('===========update called=============');
-  console.log(movie);
+
   var user_movie = {
-    user_id: movie.me.id,
+    user_id: movie.user_id,
     movie_id: movie.id
   };
   var database_movie = {
@@ -304,7 +303,7 @@ function updateUser(movie) {
       if (err) throw err;
       if (rows.length < 1) {
         connection.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
-          if (err) console.log(err);
+          if (err) throw err;
         });
       }
     });
