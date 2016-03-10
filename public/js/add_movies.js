@@ -86,6 +86,9 @@ function setUserMovies() {
     var new_listing = listing.clone();
     new_listing.prepend(movie.title);
     new_listing.attr('data-movieid', movie.id);
+    new_listing.find('btn-danger').click(function (e) {
+
+    })
     movies.append(new_listing);
   });
 
