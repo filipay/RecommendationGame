@@ -287,6 +287,7 @@ function shakeCard(card) {
 }
 
 function addMovie(movie) {
+  console.log(movie);
   var user_movie = {
     user_id: movie.user_id,
     movie_id: movie.id
@@ -298,7 +299,7 @@ function addMovie(movie) {
     rating: movie.vote_average,
     rating_count: movie.vote_count
   };
-  connection.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id,
+  connection.query('SELECT movie_id FROM user_movies, users WHERE movie_id = ' + movie.id + 'AND user_id = '+ movie.user_id,
     function(err, rows, fields) {
       if (err) throw err;
       if (rows.length < 1) {
