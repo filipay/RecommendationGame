@@ -92,7 +92,7 @@ function testAPI() {
 function getUserInfo() {
   FB.api('/me', function(response) {
     FB.me = response;
-    FB.api('/me/picture?height=500', function (response) {
+    FB.api('/me/picture?width=300', function (response) {
       FB.me.picture = response.data.url;
       socket.emit('getUser', FB.me);
     });

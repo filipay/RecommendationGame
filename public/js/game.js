@@ -97,8 +97,7 @@ function loadAssets(movies) {
 }
 
 function User(name, username, avatar, movieList) {
-  this.name = name || username;
-  console.log(name);
+  this.name = name;
   this.username = username;
   this.avatar = avatar || 'images/avatar-placeholder.png';
   this.movieList = movieList;
@@ -410,7 +409,7 @@ function createTable(players) {
   var count = 1;
   var origin = new Point(window.innerWidth * 0.5, -200);
   players.forEach(function(player) {
-    if (player.username !== currentUser.facebook_id) {
+    if (player.username !== currentUser.username) {
       var angle = angle_step * count;
       var x = radius * Math.cos(angle);
       var y = radius * Math.sin(angle);
@@ -457,7 +456,7 @@ function createPile(position, size) {
 function setup() {
   if (!currentUser.cards) {
     currentUser.cards = getRandomCardList(randomMovies, 5);
-    socket.emit('userHand', currentUser.facebook_id, currentUser.cards);
+    socket.emit('userHand', currentUser.username, currentUser.cards);
   }
   var background = new Sprite.fromImage('images/background.jpg');
   background.alpha = 0.1;
@@ -526,7 +525,7 @@ function onDragStart(event) {
       socket.emit('shakeCard',{
       index : this.index,
       movie_id: this.movie_id,
-      username: currentUser.facebook_id
+      username: currentUser.username
     });
   }
   if (this.movable) {
@@ -628,13 +627,13 @@ function shakeCard(username, cardIndex, remove) {
 
 function assignCard(card) {
   socket.emit('assignCard', {
-    assignedBy: currentUser.facebook_id,
+    assignedBy: currentUser.username,
     assignedTo: card.assignedTo.username,
     movie_id: card.movie_id
   });
   socket.emit('shakeCard', {
     index: card.index,
-    username: currentUser.facebook_id,
+    username: currentUser.username,
     remove: true
   });
   if (card.parent.children.length == 1) {
@@ -679,7 +678,7 @@ function newRound() {
     assignable: true
   });
   stage.addChild(hand);
-  socket.emit('userHand', currentUser.facebook_id, currentUser.cards);
+  socket.emit('userHand', currentUser.username, currentUser.cards);
   console.log(table);
   table.children.forEach(function (player) {
     player.cards.children.forEach(function (card) {

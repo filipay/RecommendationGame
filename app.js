@@ -103,7 +103,7 @@ function getUser(user) {
 }
 
 function playerConnect(player) {
-
+  console.log(player);
   var joinedPlayer = joinedPlayers[player.username];
   if (joinedPlayer) {
     this.emit('loadAssets', joinedPlayer.availableMovies);
@@ -112,7 +112,7 @@ function playerConnect(player) {
   } else {
     joinedPlayers[player.username] = player;
     player.socket = this.id;
-    player.availableMovies = player.movieList;
+    player.availableMovies = movies;
     this.emit('loadAssets', player.availableMovies);
     players.push(player);
   }
@@ -287,7 +287,6 @@ function shakeCard(card) {
 }
 
 function addMovie(movie) {
-
   var user_movie = {
     user_id: movie.user_id,
     movie_id: movie.id
