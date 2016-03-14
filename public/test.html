@@ -2,91 +2,109 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Recommender Game</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recommender Game</title>
 
-  <!-- Bootstrap -->
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="css/main.css" />
-  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-  <!--[if lt IE 9]>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/main.css" />
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.2/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
-  <script src="js/pixi.js"></script>
-  <script src="js/howler.js"></script>
-  <script src="js/tween.js"></script>
-  <script src="js/add_movies.js"></script>
+    <script src="js/pixi.js"></script>
+    <script src="js/howler.js"></script>
+    <script src="js/tween.js"></script>
+    <script src="js/add_movies.js"></script>
 </head>
 
 <body>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/facebook.js"></script>
-  <div class="container">
-    <div class="fb-login-button" data-max-rows="1" data-size="large" data-show-faces="false" data-auto-logout-link="true"></div>
-  </div>
-  <div id="main-screen" class="container">
-  </div>
-  <script id="movies" type="text/template">
-    <div class="row top-buffer">
-      <div class="col-lg-1-12">
-        <div class="col-sm-4">
-        </div>
-        <div class="col-sm-4">
-          <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search" name="search" id="search">
-            <div class="input-group-btn">
-              <button class="btn btn-default" onclick="searchMovies();"><i class="glyphicon glyphicon-search"></i></button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row movies top-buffer">
-      <div class="col-md-4">
-        <ul class="list-group search-group">
-          <a href="javascript:void(0)" class="list-group-item search" onclick="selected(event)" data-movieid=""></a>
-        </ul>
-      </div>
-      <div class="col-md-8 ">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/facebook.js"></script>
+    <div class="container">
         <div class="row">
-          <div class="col-md-3">
-            <img src=" " alt="" class="img-thumbnail" />
-            <button type="button" class="btn btn-success btn-block">
-              Add
-            </button>
-          </div>
-          <div class="col-md-5">
-            <h1 class="title-poster"></h1><big class="overview"></big>
-          </div>
+            <div class="col-md-2">
+                <div class="fb-login-button" data-max-rows="1" data-size="large" data-show-faces="false" data-auto-logout-link="true"></div>
+            </div>
+            <div class="col-md-8">
+
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-default" onclick="runGame();">
+                    Play!
+                </button>
+            </div>
         </div>
-        <div class="row top-buffer">
-          <div class="col-lg-8">
-            <ul class="list-group user-movies">
-              <li class="list-group-item movie clearfix">
-                <span class="pull-right">
-                  <button type="button" class="btn btn-xs btn-danger">
-                    <span class="glyphicons glyphicons-bin"></span>
-                  </button>
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
     </div>
-  </script>
-  <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-  <!-- Include all compiled plugins (below), or include individual files as needed -->
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <div id="main-screen">
+    </div>
+    <script id="game" type="text/template">
+        <script src="js/game.js"></script>
+    </script>
+    <script id="movies" type="text/template">
+        <div class="container">
+            <div class="row top-buffer">
+                <div class="col-lg-1-12">
+                    <div class="col-sm-4">
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search" name="search" id="search">
+                            <div class="input-group-btn">
+                                <button class="btn btn-default" onclick="searchMovies();"><i class="glyphicon glyphicon-search"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row movies top-buffer">
+                <div class="col-md-4">
+                    <ul class="list-group search-group">
+                        <a href="javascript:void(0)" class="list-group-item search" onclick="selected(event)" data-movieid=""></a>
+                    </ul>
+                </div>
+                <div class="col-md-8 ">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <img src=" " alt="" class="img-thumbnail" />
+                            <button type="button" class="btn btn-success btn-block">
+                                Add
+                            </button>
+                        </div>
+                        <div class="col-md-5">
+                            <h1 class="title-poster"></h1><big class="overview"></big>
+                        </div>
+                    </div>
+                    <div class="row top-buffer">
+                        <div class="col-lg-8">
+                            <ul class="list-group user-movies">
+                                <li class="list-group-item movie clearfix">
+                                    <span class="pull-right">
+                      <button type="button" class="btn btn-xs btn-danger">
+                        <span class="glyphicons glyphicon-minus"></span>
+                                    </button>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
-  <script src="js/add_movies.js"></script>
+            </div>
+        </div>
+    </script>
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+    <script src="js/add_movies.js"></script>
 
 </body>
 

@@ -101,4 +101,5 @@ function getUserInfo() {
 
 function setUser(user) {
   FB.me = user;
+  console.log(FB.me);
 }

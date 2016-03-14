@@ -18,7 +18,6 @@ var Container = PIXI.Container,
   Text = PIXI.Text,
   Point = PIXI.Point;
 
-var socket = io.connect();
 socket.on('updateScore', updateScore);
 socket.on('playerJoined', createTable);
 socket.on('loadAssets', loadAssets);
@@ -57,7 +56,6 @@ var stage = new Container();
 
 var display = new Container();
 
-socket.emit('getUser', FB.me);
 requestAnimationFrame(animate);
 
 function getRandomInt(min, max) {
@@ -76,11 +74,13 @@ function getRandomDouble(min, max) {
 //   });
 // }
 
-function setUser(user) {
-  currentUser = new User(user.name, user.facebook_id, user.picture, user.movies);
+function setGameUser(user) {
+  currentUser = new User(user.name, user.id, user.picture, user.movies);
+  console.log(currentUser);
+
   socket.emit('joinGame', currentUser);
 }
-
+setGameUser(FB.me);
 
 // $.getJSON('/user.php?user_id=' + (socket.emit('gameSize') + 1), function(data) {
 //     currentUser = new User(data.name, data.username, data.movies);
@@ -102,7 +102,6 @@ function User(name, username, avatar, movieList) {
   this.username = username;
   this.avatar = avatar || 'images/avatar-placeholder.png';
   this.movieList = movieList;
-  this.cards = undefined;
   this.score = 0;
 }
 

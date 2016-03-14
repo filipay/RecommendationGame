@@ -74,9 +74,14 @@ function selected(event) {
   $('.btn-success').unbind('click').click(function(e) {
     movie.user_id = FB.me.id;
 
-    socket.emit('updateUser', movie);
+    socket.emit('addMovie', movie);
   });
 }
+
+function runGame() {
+    $('#main-screen').html($('#game').html());
+}
+
 
 function setUserMovies() {
   var listing = movie_div.find('.list-group-item.movie');
@@ -86,9 +91,11 @@ function setUserMovies() {
     var new_listing = listing.clone();
     new_listing.prepend(movie.title);
     new_listing.attr('data-movieid', movie.id);
-    new_listing.find('btn-danger').click(function (e) {
-
-    })
+    new_listing.find('btn').on('click', function (e) {
+        console.log("blaaaaah");
+    });
+    console.log(new_listing.find('btn'));
+    console.log('ffffffffffffffffffffffffff');
     movies.append(new_listing);
   });
 

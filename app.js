@@ -49,7 +49,8 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('requestResetTime', resetTime);
   gameSocket.on('getUser', getUser);
   gameSocket.on('shakeCard', shakeCard);
-  gameSocket.on('updateUser', updateUser);
+  gameSocket.on('addMovie', addMovie);
+  gameSocket.on('removeMovie', removeMovie);
 
 };
 
@@ -111,7 +112,7 @@ function playerConnect(player) {
   } else {
     joinedPlayers[player.username] = player;
     player.socket = this.id;
-    player.availableMovies = possibleMovies(player.movieList);
+    player.availableMovies = player.movieList;
     this.emit('loadAssets', player.availableMovies);
     players.push(player);
   }
@@ -285,7 +286,7 @@ function shakeCard(card) {
   io.sockets.emit('shakeCard', card.username, card.index, card.remove);
 }
 
-function updateUser(movie) {
+function addMovie(movie) {
 
   var user_movie = {
     user_id: movie.user_id,
@@ -312,4 +313,8 @@ function updateUser(movie) {
     if (err) throw err;
   });
 
+}
+
+function removeMovie(movie) {
+    console.log(movie);
 }
