@@ -49,7 +49,7 @@ function searchMovies() {
 
       $('.btn-success').click(function(e) {
         movie.me = FB.me;
-        socket.emit('updateUser', movie);
+        socket.emit('addMovie', movie);
       });
     }
     setUserMovies();
