@@ -217,7 +217,7 @@ leader.position = new Point(0, 0);
 others.position = new Point(0, 50);
 leaderboard.addChild(leader);
 leaderboard.addChild(others);
-leaderboard.position = new Point(window.innerWidth * 0.8, 50);
+leaderboard.position = new Point(window.innerWidth * 0.7, 50);
 
 stage.addChild(leaderboard);
 

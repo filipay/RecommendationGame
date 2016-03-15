@@ -14,16 +14,33 @@ var time = 0;
 //
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
-var connection = mysql.createConnection({
+var pool = mysql.createPool( {
   host: 'localhost',
   user: 'sec_user',
   password: 'titan123',
   database: 'secure_login'
 });
 
-connection.connect();
 
-connection.query('SELECT * FROM movies', function(err, rows, fields) {
+pool.query = function () {
+  var queryArgs = Array.prototype.slice.apply(arguments);
+  if (queryArgs.length < 1 || queryArgs.length > 3) throw "Wrong number of args";
+  var query = queryArgs[0];
+  var post = queryArgs[1] || [];
+  var callback = queryArgs[2] || queryArgs[1];
+
+  this.getConnection(function(err, connection) {
+    if (err) throw err;
+    connection.query(query, post, function (err, rows) {
+      connection.release();
+      if(err) throw err;
+      else if (callback) callback(rows);
+    });
+  });
+};
+
+
+pool.query('SELECT * FROM movies', function(err, rows, fields) {
   if (err) throw err;
 
   rows.forEach(function(row) {
@@ -81,10 +98,10 @@ function getUser(user) {
     name: user.name,
     picture: user.picture
   };
-  connection.query('SELECT movies.* FROM movies, user_movies WHERE user_movies.user_id = ' + user.id + ' AND user_movies.movie_id = movies.movie_id', function(err, rows, fields) {
+  pool.query('SELECT movies.* FROM movies, user_movies WHERE user_movies.user_id = ' + user.id + ' AND user_movies.movie_id = movies.movie_id', function(err, rows, fields) {
     if (err) throw err;
     if (rows.length < 1) {
-      connection.query('INSERT IGNORE INTO users SET ?', post, function(err, rows, fields) {
+      pool.query('INSERT IGNORE INTO users SET ?', post, function(err, rows, fields) {
         if (err) throw err;
       });
     } else {
@@ -279,6 +296,8 @@ function resetTime() {
 
 function gameOver() {
   io.sockets.emit('gameOver');
+
+  joinedPlayers = {};
 }
 
 function shakeCard(card) {
@@ -299,17 +318,17 @@ function addMovie(movie) {
     rating: movie.vote_average,
     rating_count: movie.vote_count
   };
-  connection.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = '+ movie.me.id ,
+  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = '+ movie.me.id ,
     function(err, rows, fields) {
       if (err) throw err;
       if (rows.length < 1) {
-        connection.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
+        pool.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
           if (err) throw err;
         });
       }
     });
 
-  connection.query('INSERT IGNORE INTO movies SET ?', database_movie, function(err, rows, fields) {
+  pool.query('INSERT IGNORE INTO movies SET ?', database_movie, function(err, rows, fields) {
     if (err) throw err;
   });
 
