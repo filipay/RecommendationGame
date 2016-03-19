@@ -90,7 +90,9 @@ function testAPI() {
 }
 
 function getUserInfo() {
+  console.log('getting user info..');
   FB.api('/me', function(response) {
+    console.log(response);
     FB.me = response;
     FB.api('/me/picture?width=300', function (response) {
       FB.me.picture = response.data.url;

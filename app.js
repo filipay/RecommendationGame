@@ -28,13 +28,15 @@ pool.query = function () {
 
   var query = queryArgs[0];
   var post = queryArgs.length > 2 ? queryArgs[1] : [];
-  var callback = queryArgs.length > 2 ? queryArgs[2] : queryArgs[1];
-
-
+  var callback = queryArgs[queryArgs.length-1];
 
   this.getConnection(function(err, connection) {
     if (err) throw err;
-    connection.query(query, post, callback);
+    connection.query(query, post, function (err, results) {
+      connection.release();
+      callback(err, results);
+    });
+    console.log('connection ended');
   });
 };
 
@@ -112,6 +114,7 @@ function getUser(user) {
         };
         user.movies.push(movie);
       });
+      console.log(user);
     }
 
     socket.emit('setUser', user);
@@ -181,10 +184,7 @@ function cardAssigned(data) {
   updateScore(assignedPlayer, this, data.movie_id);
   var chosen_movie = getMovie(data.movie_id);
   pile.push(chosen_movie);
-  // console.log(chosen_movie);
 
-  // console.log(suggested);
-  // console.log(chosen_movie);
   io.sockets.emit('placeOnPile', [chosen_movie]);
 }
 
@@ -201,7 +201,11 @@ function getMovie(movie_id) {
 function addCollaborator(assignedTo, assignedBy, movie) {
   suggested[assignedTo] = suggested[assignedTo] || {};
   suggested[assignedTo][movie] = suggested[assignedTo][movie] || [];
-  suggested[assignedTo][movie].push(assignedBy);
+  if (!suggested[assignedTo][movie].some(function (collaborator) {
+    return assignedBy.username === collaborator.username;
+  })) {
+    suggested[assignedTo][movie].push(assignedBy);
+  }
 }
 
 function updateScore(assignedTo, assignedBy, movie) {

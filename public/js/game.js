@@ -82,12 +82,6 @@ function setGameUser(user) {
 }
 setGameUser(FB.me);
 
-// $.getJSON('/user.php?user_id=' + (socket.emit('gameSize') + 1), function(data) {
-//     currentUser = new User(data.name, data.username, data.movies);
-//     socket.emit('joinGame', currentUser);
-// });
-
-
 function loadAssets(movies) {
   randomMovies = movies;
   movies.forEach(function(movie) {
@@ -104,11 +98,9 @@ function User(name, username, avatar, movieList) {
   this.score = 0;
 }
 
-
 $(window).on('beforeunload', function() {
   socket.close();
 });
-
 
 function updateScore(data) {
   if (data.score > 10) {
@@ -385,7 +377,7 @@ function createHand(movies, position, options, rotation) {
       new TWEEN.Tween(card.position).to({
         x: point.x,
         y: point.y
-      }, 100).easing(TWEEN.Easing.Elastic.Out).delay(200).onComplete(function() {
+      }, 100).easing(TWEEN.Easing.Elastic.Out).delay(500).onComplete(function() {
         card.placeSound.play();
       }).start();
     }
@@ -433,22 +425,12 @@ function createTable(players) {
 var pile = new Container();
 
 function createPile(position, size) {
-  // console.log(size.width);
 
-  // console.log(pile.width);
-
-  // pile = new Graphics();
   pile = new Sprite.fromImage('images/table.png');
   pile.position = position;
   pile.width = size.width;
   pile.height = size.height;
-  // pile.beginFill(0x0b8c00);
-  // pile.lineStyle(2, 0xffffff);
-  // pile.drawRoundedRect(0, 0, size.width, size.height);
-  // console.log(pile.width + ' = pile widht, ' + pile.height + ' = pile.height');
-  // pile.endFill();
-  // pile.width = size.width;
-  // pile.height = size.height;
+
   return pile;
 }
 
@@ -539,7 +521,6 @@ function onDragStart(event) {
 }
 
 function onDragEnd() {
-  this.assignSound.play();
   if (this.assignedTo) {
     assignCard(this);
     onPlayerHoverOut(this.assignedTo);
@@ -643,10 +624,6 @@ function assignCard(card) {
 }
 
 function placeOnPile(movies) {
-  // if (!pile.children.some(function(m) {
-  //         return m.movie_id === movie.movie_id;
-  //     })) {
-  console.log(movies);
   var padding = {
     x: 200,
     y: 200
@@ -664,6 +641,7 @@ function placeOnPile(movies) {
       x: "+1",
       y: "+1"
     }, 500).easing(TWEEN.Easing.Bounce.Out).start();
+    card.placeSound.play();
     pile.addChild(card);
   });
 
@@ -735,4 +713,9 @@ function gameOver() {
   new TWEEN.Tween(gameOverText.scale).to({
     x: 1.0,
   }).easing(TWEEN.Easing.Bounce.Out).start();
+}
+
+
+function floatText(text, from, to) {
+
 }
