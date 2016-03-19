@@ -25,17 +25,16 @@ var pool = mysql.createPool( {
 pool.query = function () {
   var queryArgs = Array.prototype.slice.apply(arguments);
   if (queryArgs.length < 1 || queryArgs.length > 3) throw "Wrong number of args";
+
   var query = queryArgs[0];
-  var post = queryArgs[1] || [];
-  var callback = queryArgs[2] || queryArgs[1];
+  var post = queryArgs.length > 2 ? queryArgs[1] : [];
+  var callback = queryArgs.length > 2 ? queryArgs[2] : queryArgs[1];
+
+
 
   this.getConnection(function(err, connection) {
     if (err) throw err;
-    connection.query(query, post, function (err, rows) {
-      connection.release();
-      if(err) throw err;
-      else if (callback) callback(rows);
-    });
+    connection.query(query, post, callback);
   });
 };
 
@@ -306,9 +305,8 @@ function shakeCard(card) {
 }
 
 function addMovie(movie) {
-  console.log(movie);
   var user_movie = {
-    user_id: movie.me.id,
+    user_id: movie.user_id,
     movie_id: movie.id
   };
   var database_movie = {
@@ -318,7 +316,11 @@ function addMovie(movie) {
     rating: movie.vote_average,
     rating_count: movie.vote_count
   };
-  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = '+ movie.me.id ,
+
+  console.log(user_movie);
+  console.log(database_movie);
+
+  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = '+ movie.user_id ,
     function(err, rows, fields) {
       if (err) throw err;
       if (rows.length < 1) {
@@ -335,5 +337,8 @@ function addMovie(movie) {
 }
 
 function removeMovie(movie) {
-    console.log(movie);
+    pool.query('DELETE FROM user_movies WHERE user_id = '+movie.user_id+' AND movie_id = ' + movie.movie_id, function (err, rows, fields) {
+      if (err) throw err;
+      console.log(movie.title + " deleted");
+    });
 }
