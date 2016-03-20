@@ -8,9 +8,10 @@ function statusChangeCallback(response) {
   // app know the current login status of the person.
   // Full docs on the response object can be found in the documentation
   // for FB.getLoginStatus().
+  $('.navbar').show();
+  
   if (response.status === 'connected') {
     // Logged into your app and Facebook.
-    $('.navbar').show();
     socket = io.connect();
     socket.on('setUser', setUser);
     $('#main-screen').html($('#movies').html());
