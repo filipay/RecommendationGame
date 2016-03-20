@@ -2,7 +2,7 @@ var movie_div;
 var image_url = 'http://image.tmdb.org/t/p/w500';
 var placeholder = 'images/placeholder_poster.png';
 var results = {};
-
+$('.navbar').hide();
 function prepareMovieSearch() {
   movie_div = $('.row.movies').clone();
 
@@ -84,6 +84,7 @@ function selected(event) {
 }
 
 function runGame() {
+  $('.navbar.navbar-default').hide();
   $('#main-screen').html($('#game').html());
 }
 

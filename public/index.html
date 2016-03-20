@@ -17,6 +17,7 @@
       <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.2/html5shiv.js"></script>
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script src="js/pixi.js"></script>
   <script src="js/howler.js"></script>
   <script src="js/tween.js"></script>
@@ -24,20 +25,36 @@
 </head>
 
 <body>
-  <div class="container">
-    <div class="row">
-      <div class="col-md-2">
-        <div class="fb-login-button" data-max-rows="1" data-size="large" data-show-faces="false" data-auto-logout-link="true"></div>
-      </div>
-      <div class="col-md-8">
-      </div>
-      <div class="col-md-2">
-        <button type="button" class="btn btn-default" onclick="runGame();">
-          Play!
+  <nav class="navbar navbar-default" role="navigation">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
         </button>
+        <a class="navbar-brand" href="#"></a>
       </div>
-    </div>
 
+      <!-- Collect the nav links, forms, and other content for toggling -->
+      <div class="collapse navbar-collapse" id="navbar">
+        <ul class="nav navbar-nav">
+          <li class="active"><a href="#">Your Movies</a></li>
+          <li><a href="#">Recommendations</a></li>
+          <li><a href="javascript:void(0)" onclick="runGame();">Play!</a></li>
+
+        </ul>
+        <ul class="nav navbar-btn navbar-right">
+          <li class="c">
+            <div class="fb-login-button" data-max-rows="1" data-size="large" data-show-faces="false" data-auto-logout-link="true"></div>
+          </li>
+        </ul>
+      </div>
+      <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container-fluid -->
+  </nav>
   </div>
   <div id="main-screen">
   </div>
@@ -103,7 +120,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/facebook.js"></script>
   <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <!-- Include all compiled plugins (below), or include individual files as needed -->
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 

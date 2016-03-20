@@ -11,10 +11,10 @@ var pile = [];
 var playersFinished = 0;
 var timer;
 var time = 0;
-//
+var userMovies = [];
 var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
-var pool = mysql.createPool( {
+var pool = mysql.createPool({
   host: 'localhost',
   user: 'sec_user',
   password: 'titan123',
@@ -22,21 +22,20 @@ var pool = mysql.createPool( {
 });
 
 
-pool.query = function () {
+pool.query = function() {
   var queryArgs = Array.prototype.slice.apply(arguments);
   if (queryArgs.length < 1 || queryArgs.length > 3) throw "Wrong number of args";
 
   var query = queryArgs[0];
   var post = queryArgs.length > 2 ? queryArgs[1] : [];
-  var callback = queryArgs[queryArgs.length-1];
+  var callback = queryArgs[queryArgs.length - 1];
 
   this.getConnection(function(err, connection) {
     if (err) throw err;
-    connection.query(query, post, function (err, results) {
+    connection.query(query, post, function(err, results) {
       connection.release();
       callback(err, results);
     });
-    console.log('connection ended');
   });
 };
 
@@ -130,15 +129,20 @@ function playerConnect(player) {
     players.push(joinedPlayer);
   } else {
     joinedPlayers[player.username] = player;
+    player.streak = 0;
     player.socket = this.id;
-    player.availableMovies = movies;
+    player.availableMovies = possibleMovies(player.movieList);
     this.emit('loadAssets', player.availableMovies);
     players.push(player);
   }
-  if (players.length === 3) {
+  if (players.length === 2) {
     io.sockets.emit('startGame');
     timer = setInterval(function() {
       time++;
+      if (time >= 3 * 60) {
+        clearInterval(timer);
+        gameOver();
+      }
     }, 1000);
   }
 }
@@ -201,22 +205,28 @@ function getMovie(movie_id) {
 function addCollaborator(assignedTo, assignedBy, movie) {
   suggested[assignedTo] = suggested[assignedTo] || {};
   suggested[assignedTo][movie] = suggested[assignedTo][movie] || [];
-  if (!suggested[assignedTo][movie].some(function (collaborator) {
-    return assignedBy.username === collaborator.username;
-  })) {
+  if (!suggested[assignedTo][movie].some(function(collaborator) {
+      return assignedBy.username === collaborator.username;
+    })) {
     suggested[assignedTo][movie].push(assignedBy);
   }
 }
 
 function updateScore(assignedTo, assignedBy, movie) {
   console.log(assignedTo.username);
+  var score = 0;
   if (assignedTo.movieList.some(function(userMovie) {
       return userMovie.movie_id === movie;
     })) {
-    joinedPlayers[assignedBy.username].score += 10;
+    score = 10;
+    score +=
+      score * (Math.min(joinedPlayers[assignedBy.username].streak, 6) / 3);
+    score = Math.round(score);
     assignedBy.emit('updateScore', {
-      score: 10
+      score: score
     });
+    joinedPlayers[assignedBy.username].score += score;
+    joinedPlayers[assignedBy.username].streak += 1;
   } else {
     //TODO make scoring system better
     //multipliers, bonuses, etc.
@@ -224,30 +234,37 @@ function updateScore(assignedTo, assignedBy, movie) {
     var collaborators = suggested[assignedTo.username][movie];
     if (collaborators.length > 1) {
       for (var i = 0; i < collaborators.length; i++) {
-        var score = (collaborators.length - i + 1) * 10;
-        // console.log('================COLLABORATOR=================');
-        // console.log(collaborators[i]);
+        score = (collaborators.length - i + 1) * 10;
+        score += score * (Math.min(joinedPlayers[collaborators[i].username].streak, 6) / 3);
+        score = Math.round(score);
+
         joinedPlayers[collaborators[i].username].score += score;
         collaborators[i].emit('updateScore', {
           score: score,
         });
+        joinedPlayers[collaborators[i].username].streak += 1;
       }
+    } else {
+      joinedPlayers[assignedBy.username].streak = 0;
     }
-
-    console.log(suggested);
-    // for (var badname in suggested) {
-    //   if (suggested.hasOwnProperty(badname)) {
-    //     console.log(suggested[badname]);
-    //   }
-    // }
   }
   sendLeaderboard();
 }
 
-function roundFinished() {
+function roundFinished(userData) {
+  console.log(userData);
   console.log('playersFinished = ' + playersFinished);
   console.log('playerLen = ' + players.length);
   playersFinished++;
+  var score = joinedPlayers[userData.username].score;
+  score = Math.round(score * (userData.time / 10));
+  this.emit('updateScore', {
+    score: score
+  });
+
+  joinedPlayers[userData.username].score += score;
+
+
   if (playersFinished == players.length) {
     console.log('newROUND!!!!');
     pile = [];
@@ -300,7 +317,9 @@ function resetTime() {
 function gameOver() {
   io.sockets.emit('gameOver');
 
+  //TODO record all the events
   joinedPlayers = {};
+  suggested = {};
 }
 
 function shakeCard(card) {
@@ -324,7 +343,7 @@ function addMovie(movie) {
   console.log(user_movie);
   console.log(database_movie);
 
-  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = '+ movie.user_id ,
+  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = ' + movie.user_id,
     function(err, rows, fields) {
       if (err) throw err;
       if (rows.length < 1) {
@@ -341,8 +360,8 @@ function addMovie(movie) {
 }
 
 function removeMovie(movie) {
-    pool.query('DELETE FROM user_movies WHERE user_id = '+movie.user_id+' AND movie_id = ' + movie.movie_id, function (err, rows, fields) {
-      if (err) throw err;
-      console.log(movie.title + " deleted");
-    });
+  pool.query('DELETE FROM user_movies WHERE user_id = ' + movie.user_id + ' AND movie_id = ' + movie.movie_id, function(err, rows, fields) {
+    if (err) throw err;
+    console.log(movie.title + " deleted");
+  });
 }

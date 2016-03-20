@@ -114,9 +114,10 @@ function updateScore(data) {
   }
   currentUser.score += data.score;
   currentScore.text = currentUser.score;
+
   new TWEEN.Tween(currentScore.scale).to({
-    x: 1.2,
-    y: 1.2
+    x: 1 + data.score / 100,
+    y: 1 + data.score / 100
   }, 200).repeat(1).yoyo(true).start();
 }
 
@@ -162,7 +163,10 @@ function updateTime() {
   time--;
   timeText.text = pad(time);
   if (time < 1) {
-    socket.emit('roundFinished');
+    socket.emit('roundFinished', {
+      username: currentUser.username,
+      time: 0
+    });
     time = 30;
   }
 }
@@ -188,7 +192,9 @@ currentScore = new PIXI.Text('0', {
 });
 
 score.addChild(currentScore);
-currentScore.position.x = score.width;
+currentScore.anchor.set(0.5,0.5);
+currentScore.position.x = score.width + 20;
+currentScore.position.y = score.height * 0.5;
 currentScore.scale.set(1, 1);
 score.position.set(50, 50);
 stage.addChild(score);
@@ -203,6 +209,8 @@ var leader = new Text('', {
 var others = new Text('', {
   font: "20px sans-serif",
   fill: "white",
+  align: "left",
+  lineHeight: 25
 });
 
 leader.position = new Point(0, 0);
@@ -529,6 +537,7 @@ function onDragEnd() {
       y: 0.5
     }, 100).repeat(1).yoyo(true).start();
   } else {
+    this.placeSound.play();
     new TWEEN.Tween(this.position).to({
       x: this.origin.x,
       y: this.origin.y
@@ -618,7 +627,12 @@ function assignCard(card) {
     remove: true
   });
   if (card.parent.children.length == 1) {
-    socket.emit('roundFinished');
+    console.log(currentUser);
+    socket.emit('roundFinished', {
+      username: currentUser.username,
+      time: time
+    });
+    blowUpText("EARLY FINISH", 60, stage);
   }
   card.parent.removeChild(card);
 }
@@ -641,7 +655,7 @@ function placeOnPile(movies) {
       x: "+1",
       y: "+1"
     }, 500).easing(TWEEN.Easing.Bounce.Out).start();
-    card.placeSound.play();
+    card.assignSound.play();
     pile.addChild(card);
   });
 
@@ -678,8 +692,8 @@ function gameOver() {
     font: "100px sans-serif",
     fill: "white"
   });
-
-  var winner =  new Text(leader.text.substring(0, leader.text.indexOf(':')) + ' wins!', {
+  var leadername = leader.text.substring(0, leader.text.indexOf(':'));
+  var winner =  new Text(leadername + ' wins!', {
       font: "60px sans-serif",
       fill: "yellow"
   });
@@ -703,7 +717,6 @@ function gameOver() {
   }).start();
 
 
-
   gameOverText.position = new Point((window.innerWidth - gameOverText.width)*0.5, (window.innerHeight - gameOverText.height)*0.5);
   winner.position = new Point((gameOverText.width - winner.width)*0.5, 120);
 
@@ -716,6 +729,33 @@ function gameOver() {
 }
 
 
-function floatText(text, from, to) {
+function blowUpText(text, size, container) {
+  console.log(text);
+  var hex = pastelColors();
+  var showText = new Text(text, {
+    font: "bold "+size+"px sans-serif",
+    fill: hex
+  });
+  showText.anchor.set(0.5,0.5);
+  showText.scale.set(0.5,0.5);
+  showText.alpha = 1;
+  showText.position.x = (container.width - showText.width) * 0.5 ;
+  showText.position.y = (container.height - showText.height) * 0.5 ;
+  container.addChild(showText);
+  new TWEEN.Tween(showText).to({
+    alpha: 0
+  }, 1500).start();
+  new TWEEN.Tween(showText.scale).to({
+    x: 1.2,
+    y: 1.2
+  }, 1500).onComplete(function () {
+    container.removeChild(showText);
+  }).start();
+}
 
+function pastelColors(){
+    var r = (Math.round(Math.random()* 127) + 127).toString(16);
+    var g = (Math.round(Math.random()* 127) + 127).toString(16);
+    var b = (Math.round(Math.random()* 127) + 127).toString(16);
+    return '#' + r + g + b;
 }
