@@ -116,8 +116,8 @@ function updateScore(data) {
   currentScore.text = currentUser.score;
 
   new TWEEN.Tween(currentScore.scale).to({
-    x: 1 + data.score / 100,
-    y: 1 + data.score / 100
+    x: 1 + Math.min(data.score / 100, 1),
+    y: 1 + Math.min(data.score / 100, 1)
   }, 200).repeat(1).yoyo(true).start();
 }
 

@@ -9,7 +9,6 @@ function statusChangeCallback(response) {
   // Full docs on the response object can be found in the documentation
   // for FB.getLoginStatus().
   $('.navbar').show();
-  
   if (response.status === 'connected') {
     // Logged into your app and Facebook.
     socket = io.connect();

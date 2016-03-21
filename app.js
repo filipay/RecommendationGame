@@ -129,6 +129,7 @@ function playerConnect(player) {
     players.push(joinedPlayer);
   } else {
     joinedPlayers[player.username] = player;
+    player.roundScore = 0;
     player.streak = 0;
     player.socket = this.id;
     player.availableMovies = possibleMovies(player.movieList);
@@ -225,6 +226,8 @@ function updateScore(assignedTo, assignedBy, movie) {
     assignedBy.emit('updateScore', {
       score: score
     });
+
+    joinedPlayers[assignedBy.username].roundScore += score;
     joinedPlayers[assignedBy.username].score += score;
     joinedPlayers[assignedBy.username].streak += 1;
   } else {
@@ -238,6 +241,7 @@ function updateScore(assignedTo, assignedBy, movie) {
         score += score * (Math.min(joinedPlayers[collaborators[i].username].streak, 6) / 3);
         score = Math.round(score);
 
+        joinedPlayers[collaborators[i].username].roundScore += score;
         joinedPlayers[collaborators[i].username].score += score;
         collaborators[i].emit('updateScore', {
           score: score,
@@ -256,14 +260,15 @@ function roundFinished(userData) {
   console.log('playersFinished = ' + playersFinished);
   console.log('playerLen = ' + players.length);
   playersFinished++;
-  var score = joinedPlayers[userData.username].score;
+  var score = joinedPlayers[userData.username].roundScore;
   score = Math.round(score * (userData.time / 10));
   this.emit('updateScore', {
     score: score
   });
 
   joinedPlayers[userData.username].score += score;
-
+  joinedPlayers[userData.username].roundScore = 0;
+  sendLeaderboard();
 
   if (playersFinished == players.length) {
     console.log('newROUND!!!!');
