@@ -73,7 +73,7 @@ function selected(event) {
     $('#interact').unbind('click').click(function(e) {
       $('#interact').prop('class', 'btn btn-success btn-block disabled');
       $('#interact').unbind('click');
-      movie.user_id = FB.me.id;
+      movie.user_id = FB.me.facebook_id;
       socket.emit('addMovie', movie);
       FB.me.movies.unshift(movie);
       setUserMovies();
@@ -95,8 +95,7 @@ function setUserMovies() {
   movies.html('');
 
   var button = function(e) {
-    movie.user_id = FB.me.id;
-    socket.emit('removeMovie', movie);
+    socket.emit('removeMovie', movie, FB.me.facebook_id);
     FB.me.movies.pop(movie);
     $(e.target).parent().parent().remove();
   };

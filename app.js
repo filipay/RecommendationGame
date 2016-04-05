@@ -1,5 +1,20 @@
+/*jshint esversion: 6 */
 var mysql = require('mysql');
-var http = require('http');
+var Datastore = require('nedb'),
+    db = {};
+
+db.users = new Datastore({filename: 'db/users.db', autoload: true });
+db.movies = new Datastore({filename: 'db/movies.db', autoload: true });
+db.recommendations = new Datastore({filename: 'db/recommendations.db', autoload: true });
+
+db.users.ensureIndex({ fieldName: 'facebook_id', unique: true}, function (err) {
+  if (err) throw err;
+});
+
+db.movies.ensureIndex( {fieldName: 'movie_id', unique: true}, function (err) {
+  if (err) throw err;
+});
+
 
 var io;
 var gameSocket;
@@ -12,7 +27,6 @@ var playersFinished = 0;
 var timer;
 var time = 0;
 var userMovies = [];
-var uri = 'www.omdbapi.com/?i={movieid}&type=movie&plot=short&tomatoes=true';
 
 var pool = mysql.createPool({
   host: 'localhost',
@@ -39,6 +53,12 @@ pool.query = function() {
   });
 };
 
+
+db.movies.find( {} , function (err, docs) {
+  console.log("MOVVIIESSSSSSSSSSSSSSS");
+  console.log(docs);
+  movies = docs;
+});
 
 pool.query('SELECT * FROM movies', function(err, rows, fields) {
   if (err) throw err;
@@ -96,28 +116,41 @@ function getUser(user) {
   var post = {
     facebook_id: user.id,
     name: user.name,
-    picture: user.picture
+    picture: user.picture,
+    movies: []
   };
-  pool.query('SELECT movies.* FROM movies, user_movies WHERE user_movies.user_id = ' + user.id + ' AND user_movies.movie_id = movies.movie_id', function(err, rows, fields) {
-    if (err) throw err;
-    if (rows.length < 1) {
-      pool.query('INSERT IGNORE INTO users SET ?', post, function(err, rows, fields) {
-        if (err) throw err;
-      });
-    } else {
-      rows.forEach(function(row) {
-        var movie = {
-          movie_id: row.movie_id,
-          title: row.title,
-          poster_url: row.poster_url
-        };
-        user.movies.push(movie);
-      });
-      console.log(user);
-    }
 
+  db.users.findOne({ facebook_id : user.id }, function (err, doc) {
+    if (err) throw err;
+    console.log(doc);
+    if (!doc || doc.length < 1) {
+      db.users.insert(post);
+      user = post;
+    } else {
+      user = doc;
+    }
     socket.emit('setUser', user);
   });
+  // pool.query('SELECT movies.* FROM movies, user_movies WHERE user_movies.user_id = ' + user.id + ' AND user_movies.movie_id = movies.movie_id', function(err, rows, fields) {
+  //   if (err) throw err;
+  //   if (rows.length < 1) {
+  //     pool.query('INSERT IGNORE INTO users SET ?', post, function(err, rows, fields) {
+  //       if (err) throw err;
+  //     });
+  //   } else {
+  //     rows.forEach(function(row) {
+  //       var movie = {
+  //         movie_id: row.movie_id,
+  //         title: row.title,
+  //         poster_url: row.poster_url
+  //       };
+  //       user.movies.push(movie);
+  //     });
+  //     console.log(user);
+  //   }
+  //
+  //   socket.emit('setUser', user);
+  // });
 }
 
 function playerConnect(player) {
@@ -348,25 +381,30 @@ function addMovie(movie) {
   console.log(user_movie);
   console.log(database_movie);
 
-  pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = ' + movie.user_id,
-    function(err, rows, fields) {
-      if (err) throw err;
-      if (rows.length < 1) {
-        pool.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
-          if (err) throw err;
-        });
-      }
-    });
-
-  pool.query('INSERT IGNORE INTO movies SET ?', database_movie, function(err, rows, fields) {
-    if (err) throw err;
+  db.users.update({ facebook_id : movie.user_id }, { $addToSet: { movies: database_movie } });
+  db.movies.insert(movie, function (err) {
+    if (err.errorType != 'uniqueViolated') throw err;
   });
+  // pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = ' + movie.user_id,
+  //   function(err, rows, fields) {
+  //     if (err) throw err;
+  //     if (rows.length < 1) {
+  //       pool.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
+  //         if (err) throw err;
+  //       });
+  //     }
+  //   });
+  //
+  // pool.query('INSERT IGNORE INTO movies SET ?', database_movie, function(err, rows, fields) {
+  //   if (err) throw err;
+  // });
 
 }
 
-function removeMovie(movie) {
-  pool.query('DELETE FROM user_movies WHERE user_id = ' + movie.user_id + ' AND movie_id = ' + movie.movie_id, function(err, rows, fields) {
-    if (err) throw err;
-    console.log(movie.title + " deleted");
-  });
+function removeMovie(movie, id) {
+  db.users.update({ facebook_id : id }, { $pull: { movies: movie } });
+  // pool.query('DELETE FROM user_movies WHERE user_id = ' + movie.user_id + ' AND movie_id = ' + movie.movie_id, function(err, rows, fields) {
+  //   if (err) throw err;
+  //   console.log(movie.title + " deleted");
+  // });
 }
