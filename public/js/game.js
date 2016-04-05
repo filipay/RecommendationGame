@@ -75,7 +75,7 @@ function getRandomDouble(min, max) {
 // }
 
 function setGameUser(user) {
-  currentUser = new User(user.name, user.id, user.picture, user.movies);
+  currentUser = new User(user.name, user.facebook_id, user.picture, user.movies);
   console.log(currentUser);
 
   socket.emit('joinGame', currentUser);
@@ -83,10 +83,13 @@ function setGameUser(user) {
 setGameUser(FB.me);
 
 function loadAssets(movies) {
+
   randomMovies = movies;
   movies.forEach(function(movie) {
+    console.log(movie);
     loader.add(movie.poster_url);
   });
+  console.log(randomMovies);
   loadPlaceholders();
 }
 
@@ -514,7 +517,7 @@ function onDragStart(event) {
   if (!this.dragging) {
       socket.emit('shakeCard',{
       index : this.index,
-      movie_id: this.movie_id,
+      id: this.id,
       username: currentUser.username
     });
   }
@@ -619,7 +622,7 @@ function assignCard(card) {
   socket.emit('assignCard', {
     assignedBy: currentUser.username,
     assignedTo: card.assignedTo.username,
-    movie_id: card.movie_id
+    id: card.id
   });
   socket.emit('shakeCard', {
     index: card.index,

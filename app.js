@@ -11,7 +11,7 @@ db.users.ensureIndex({ fieldName: 'facebook_id', unique: true}, function (err) {
   if (err) throw err;
 });
 
-db.movies.ensureIndex( {fieldName: 'movie_id', unique: true}, function (err) {
+db.movies.ensureIndex( {fieldName: 'id', unique: true}, function (err) {
   if (err) throw err;
 });
 
@@ -28,46 +28,13 @@ var timer;
 var time = 0;
 var userMovies = [];
 
-var pool = mysql.createPool({
-  host: 'localhost',
-  user: 'sec_user',
-  password: 'titan123',
-  database: 'secure_login'
-});
 
-
-pool.query = function() {
-  var queryArgs = Array.prototype.slice.apply(arguments);
-  if (queryArgs.length < 1 || queryArgs.length > 3) throw "Wrong number of args";
-
-  var query = queryArgs[0];
-  var post = queryArgs.length > 2 ? queryArgs[1] : [];
-  var callback = queryArgs[queryArgs.length - 1];
-
-  this.getConnection(function(err, connection) {
-    if (err) throw err;
-    connection.query(query, post, function(err, results) {
-      connection.release();
-      callback(err, results);
-    });
+function updateMovies() {
+  db.movies.find( {} , function (err, docs) {
+    movies = docs;
   });
-};
+}
 
-
-db.movies.find( {} , function (err, docs) {
-  console.log("MOVVIIESSSSSSSSSSSSSSS");
-  console.log(docs);
-  movies = docs;
-});
-
-pool.query('SELECT * FROM movies', function(err, rows, fields) {
-  if (err) throw err;
-
-  rows.forEach(function(row) {
-    movies.push(row);
-  });
-  // console.log(movies);
-});
 
 exports.initGame = function(s_io, socket) {
   io = s_io;
@@ -95,7 +62,7 @@ function possibleMovies(player_movies) {
   var possibleMovies = [];
   movies.forEach(function(m) {
     if (!player_movies.some(function(elem) {
-        return elem.movie_id === m.movie_id;
+        return elem.id === m.id;
       })) {
       possibleMovies.push(m);
     }
@@ -109,8 +76,6 @@ function amountOfPlayers() {
 }
 
 function getUser(user) {
-  // var id = players.length + 2;
-  console.log(user);
   var socket = this;
   user.movies = [];
   var post = {
@@ -122,7 +87,6 @@ function getUser(user) {
 
   db.users.findOne({ facebook_id : user.id }, function (err, doc) {
     if (err) throw err;
-    console.log(doc);
     if (!doc || doc.length < 1) {
       db.users.insert(post);
       user = post;
@@ -131,30 +95,10 @@ function getUser(user) {
     }
     socket.emit('setUser', user);
   });
-  // pool.query('SELECT movies.* FROM movies, user_movies WHERE user_movies.user_id = ' + user.id + ' AND user_movies.movie_id = movies.movie_id', function(err, rows, fields) {
-  //   if (err) throw err;
-  //   if (rows.length < 1) {
-  //     pool.query('INSERT IGNORE INTO users SET ?', post, function(err, rows, fields) {
-  //       if (err) throw err;
-  //     });
-  //   } else {
-  //     rows.forEach(function(row) {
-  //       var movie = {
-  //         movie_id: row.movie_id,
-  //         title: row.title,
-  //         poster_url: row.poster_url
-  //       };
-  //       user.movies.push(movie);
-  //     });
-  //     console.log(user);
-  //   }
-  //
-  //   socket.emit('setUser', user);
-  // });
 }
 
 function playerConnect(player) {
-  console.log(player);
+  if(players.length < 1) updateMovies(); //TODO wait for movies to update
   var joinedPlayer = joinedPlayers[player.username];
   if (joinedPlayer) {
     this.emit('loadAssets', joinedPlayer.availableMovies);
@@ -165,7 +109,8 @@ function playerConnect(player) {
     player.roundScore = 0;
     player.streak = 0;
     player.socket = this.id;
-    player.availableMovies = possibleMovies(player.movieList);
+    player.availableMovies = movies; //TODO wait fo people to join to serve movies
+    // player.availableMovies = possibleMovies(player.movieList);
     this.emit('loadAssets', player.availableMovies);
     players.push(player);
   }
@@ -206,7 +151,7 @@ function cardAssigned(data) {
 
   var cards = joinedPlayers[data.assignedBy].cards;
   cards.forEach(function(card) {
-    if (card.movie_id == data.movie_id) {
+    if (card.id == data.id) {
       cards.splice(cards.indexOf(card), 1);
     }
   });
@@ -219,17 +164,17 @@ function cardAssigned(data) {
     }
   });
   this.username = data.assignedBy;
-  updateScore(assignedPlayer, this, data.movie_id);
-  var chosen_movie = getMovie(data.movie_id);
+  updateScore(assignedPlayer, this, data.id);
+  var chosen_movie = getMovie(data.id);
   pile.push(chosen_movie);
 
   io.sockets.emit('placeOnPile', [chosen_movie]);
 }
 
-function getMovie(movie_id) {
+function getMovie(id) {
   var movie;
   movies.forEach(function(m) {
-    if (m.movie_id === movie_id) {
+    if (m.id === id) {
       movie = m;
     }
   });
@@ -250,7 +195,7 @@ function updateScore(assignedTo, assignedBy, movie) {
   console.log(assignedTo.username);
   var score = 0;
   if (assignedTo.movieList.some(function(userMovie) {
-      return userMovie.movie_id === movie;
+      return userMovie.id === movie;
     })) {
     score = 10;
     score +=
@@ -365,46 +310,20 @@ function shakeCard(card) {
   io.sockets.emit('shakeCard', card.username, card.index, card.remove);
 }
 
-function addMovie(movie) {
-  var user_movie = {
-    user_id: movie.user_id,
-    movie_id: movie.id
-  };
-  var database_movie = {
-    movie_id: movie.id,
-    title: movie.title,
-    poster_url: movie.poster_path,
-    rating: movie.vote_average,
-    rating_count: movie.vote_count
-  };
-
-  console.log(user_movie);
-  console.log(database_movie);
-
-  db.users.update({ facebook_id : movie.user_id }, { $addToSet: { movies: database_movie } });
+function addMovie(movie, user) {
+  db.users.update({ facebook_id : user }, { $addToSet: { movies: movie } });
   db.movies.insert(movie, function (err) {
-    if (err.errorType != 'uniqueViolated') throw err;
-  });
-  // pool.query('SELECT movie_id FROM user_movies WHERE movie_id = ' + movie.id + ' AND user_id = ' + movie.user_id,
-  //   function(err, rows, fields) {
-  //     if (err) throw err;
-  //     if (rows.length < 1) {
-  //       pool.query('INSERT IGNORE INTO user_movies SET ?', user_movie, function(err, rows, fields) {
-  //         if (err) throw err;
-  //       });
-  //     }
-  //   });
-  //
-  // pool.query('INSERT IGNORE INTO movies SET ?', database_movie, function(err, rows, fields) {
-  //   if (err) throw err;
-  // });
+    if (err) {
+      if (err.errorType != 'uniqueViolated') throw err;
+      else {
+        console.log(movie);
+        console.log(err);
+      }
+    }
 
+  });
 }
 
-function removeMovie(movie, id) {
-  db.users.update({ facebook_id : id }, { $pull: { movies: movie } });
-  // pool.query('DELETE FROM user_movies WHERE user_id = ' + movie.user_id + ' AND movie_id = ' + movie.movie_id, function(err, rows, fields) {
-  //   if (err) throw err;
-  //   console.log(movie.title + " deleted");
-  // });
+function removeMovie(movie, user) {
+  db.users.update({ facebook_id : user }, { $pull: { movies: movie } });
 }

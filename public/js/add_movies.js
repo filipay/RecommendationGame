@@ -34,7 +34,7 @@ function searchMovies() {
       movies.results.forEach(function(movie) {
 
         results[movie.id] = movie;
-        results[movie.id].poster_path = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
+        results[movie.id].poster_url = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
         var new_listing = listing.clone();
         new_listing.html(movie.title);
         new_listing.attr('data-movieid', movie.id);
@@ -45,7 +45,7 @@ function searchMovies() {
       var movie = movies.results[0];
 
       selected({
-        movie_id: movie.id
+        id: movie.id
       });
     }
     setUserMovies();
@@ -55,17 +55,17 @@ function searchMovies() {
 
 function selected(event) {
 
-  var movie_id = event.movie_id || parseInt($(event.target).attr('data-movieid'));
-  console.log(movie_id);
-  var movie = results[movie_id];
+  var id = event.id || parseInt($(event.target).attr('data-movieid'));
+  console.log(id);
+  var movie = results[id];
 
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
   $('.overview').html(movie.overview);
-  $('.img-thumbnail').prop('src', movie.poster_path);
+  $('.img-thumbnail').prop('src', movie.poster_url);
 
 
   if (FB.me.movies.some(function(m) {
-      return m.movie_id === movie_id;
+      return m.id === id;
     })) {
     $('#interact').prop('class', 'btn btn-success btn-block disabled');
   } else {
@@ -73,8 +73,8 @@ function selected(event) {
     $('#interact').unbind('click').click(function(e) {
       $('#interact').prop('class', 'btn btn-success btn-block disabled');
       $('#interact').unbind('click');
-      movie.user_id = FB.me.facebook_id;
-      socket.emit('addMovie', movie);
+
+      socket.emit('addMovie', movie, FB.me.facebook_id);
       FB.me.movies.unshift(movie);
       setUserMovies();
     });
