@@ -194,7 +194,7 @@ currentScore = new PIXI.Text('0', {
   fill: "white"
 });
 
-highlightAndFade(currentScore, pastelColors(), 2500);
+highlightAndFade(currentScore, 0.8, 4);
 
 score.addChild(currentScore);
 currentScore.anchor.set(0.5,0.5);
@@ -277,6 +277,7 @@ function Card(position, movie, options, rotation) {
 
   var background = new Sprite(resources.card.texture);
   background.anchor.set(0.5, 0.5);
+  container.background = background;
 
   var poster = new Sprite.fromImage(movie.poster_url);
   poster.width = card_w * 0.7;
@@ -530,7 +531,10 @@ function onDragStart(event) {
     this.player = undefined;
     this.origin = new PIXI.Point(this.position.x, this.position.y);
   }
-
+  // highlightAndFade(this.background, Math.random(), 2);
+  floatAwayText("+10",50,this);
+  // blowUpText("text: string",50,this);
+  highlightRainbow(this.background, 2);
 }
 
 function onDragEnd() {
@@ -735,8 +739,7 @@ function gameOver() {
 
 
 function blowUpText(text, size, container) {
-  console.log(text);
-  var hex = pastelColors();
+  var hex = hslToHex(Math.random(), 1.0, 0.5);
   var showText = new Text(text, {
     font: "bold "+size+"px sans-serif",
     fill: hex
@@ -744,35 +747,106 @@ function blowUpText(text, size, container) {
   showText.anchor.set(0.5,0.5);
   showText.scale.set(0.5,0.5);
   showText.alpha = 1;
-  showText.position.x = (container.width - showText.width) * 0.5 ;
-  showText.position.y = (container.height - showText.height) * 0.5 ;
   container.addChild(showText);
   new TWEEN.Tween(showText).to({
     alpha: 0
   }, 1500).start();
   new TWEEN.Tween(showText.scale).to({
-    x: 1.2,
-    y: 1.2
+    x: 1,
+    y: 1
   }, 1500).onComplete(function () {
     container.removeChild(showText);
   }).start();
 }
 
-function pastelColors(){
-  var r = (Math.round(Math.random()* 127) + 127).toString(16);
-  var g = (Math.round(Math.random()* 127) + 127).toString(16);
-  var b = (Math.round(Math.random()* 127) + 127).toString(16);
-  return '#' + r + g + b;
+function floatAwayText(text, size, container) {
+  var hex = hslToHex(Math.random(), 1.0, 0.5);
+  var showText = new Text(text, {
+    font: "bold "+size+"px sans-serif",
+    fill: hex
+  });
+  showText.anchor.set(0.5,0.5);
+  showText.alpha = 1;
+  showText.position.x = 0;
+  showText.position.y = -50;
+  container.addChild(showText);
+  new TWEEN.Tween(showText).to({
+    alpha: 0
+  }, 1500).onComplete(function () {
+    container.removeChild(showText);
+  }).start();
+  new TWEEN.Tween(showText.position).to({
+    y: "-150"
+  }, 1000).start();
 }
 
-function highlightAndFade(sprite, hColor, msTime) {
+function componentToHex(c) {
+  var hex = c.toString(16);
+  return hex == 1 ? "0" + hex : hex;
+}
 
-  if (typeof hColor === 'string') {
-    hColor = parseInt(hColor.substr(hColor.length - 6), 16);
-  }
+function highlightAndFade(sprite, hue, duration_s) {
+  duration_s *= 1000;
 
-  sprite.tint = hColor;
-  new TWEEN.Tween(sprite).to({
-    tint: 0xFFFFFF
-  }, msTime).start();
+  var hsl = {
+    hue: hue,
+    saturation: 1,
+    luminosity: 0.6
+  };
+  sprite.tint = hslToHex(hsl.hue, hsl.saturation, hsl.luminosity);
+
+  new TWEEN.Tween(hsl).to({
+    luminosity: 1.0
+  }, duration_s).onUpdate(function () {
+    sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
+  }).start();
+}
+
+function highlightRainbow(sprite, times) {
+
+  var hsl = {
+    hue: 0.0,
+    saturation: 1,
+    luminosity: 0.6
+  };
+  sprite.tint = hslToHex(hsl.hue, hsl.saturation, hsl.luminosity);
+
+  new TWEEN.Tween(hsl).to({
+    hue: 1.0
+  }, 2000).repeat(times).onUpdate(function () {
+    sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
+  }).onComplete(function () {
+    new TWEEN.Tween(hsl).to({
+      luminosity: 1.0
+    }, 500).onUpdate(function () {
+        sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
+    }).start();
+  }).start();
+}
+
+function hslToHex(h, s, l){
+    var r, g, b;
+
+    if(s === 0){
+        r = g = b = l; // achromatic
+    }else{
+        var hue2rgb = function hue2rgb(p, q, t){
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return p + (q - p) * 6 * t;
+            if(t < 1/2) return q;
+            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    r = componentToHex(Math.round(r * 255));
+    g = componentToHex(Math.round(g * 255));
+    b = componentToHex(Math.round(b * 255));
+    return parseInt(r+g+b, 16);
 }
