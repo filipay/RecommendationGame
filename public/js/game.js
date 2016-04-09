@@ -194,6 +194,8 @@ currentScore = new PIXI.Text('0', {
   fill: "white"
 });
 
+highlightAndFade(currentScore, pastelColors(), 2500);
+
 score.addChild(currentScore);
 currentScore.anchor.set(0.5,0.5);
 currentScore.position.x = score.width + 20;
@@ -757,8 +759,20 @@ function blowUpText(text, size, container) {
 }
 
 function pastelColors(){
-    var r = (Math.round(Math.random()* 127) + 127).toString(16);
-    var g = (Math.round(Math.random()* 127) + 127).toString(16);
-    var b = (Math.round(Math.random()* 127) + 127).toString(16);
-    return '#' + r + g + b;
+  var r = (Math.round(Math.random()* 127) + 127).toString(16);
+  var g = (Math.round(Math.random()* 127) + 127).toString(16);
+  var b = (Math.round(Math.random()* 127) + 127).toString(16);
+  return '#' + r + g + b;
+}
+
+function highlightAndFade(sprite, hColor, msTime) {
+
+  if (typeof hColor === 'string') {
+    hColor = parseInt(hColor.substr(hColor.length - 6), 16);
+  }
+
+  sprite.tint = hColor;
+  new TWEEN.Tween(sprite).to({
+    tint: 0xFFFFFF
+  }, msTime).start();
 }
