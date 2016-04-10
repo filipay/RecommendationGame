@@ -53,9 +53,22 @@ var cardAssignSound = ['/sounds/cardSlide1.wav', '/sounds/cardSlide2.wav', '/sou
 var cardFeelSound = ['/sounds/cardShove1.wav', '/sounds/cardShove2.wav', '/sounds/cardShove3.wav', '/sounds/cardShove4.wav'];
 
 var stage = new Container();
+stage.baseContainer = true;
+var waitingScreen = new Container();
+waitingScreen.baseContainer = true;
+var display = waitingScreen;
 
-var display = new Container();
 
+var waitingText = new Text("Hello world!", {
+  font: "40px sans-serif",
+  fill: 0xFFFF0B
+});
+
+waitingText.anchor.set(0.5,0.5);
+console.log();
+waitingText.position.set((window.innerWidth) * 0.5, (window.innerHeight ) * 0.5);
+waitingScreen.addChild(waitingText);
+blowUpText("hello",20,waitingText);
 requestAnimationFrame(animate);
 
 function getRandomInt(min, max) {
@@ -134,8 +147,8 @@ function loadPlaceholders() {
 }
 
 
-var card_w = 84,
-  card_h = 124;
+var card_w = 100,
+  card_h = 150;
 // var card_w = 80;
 // var card_h = card_w * 16.0 / 9.0;
 
@@ -239,7 +252,9 @@ function BlankCard(position, rotation) {
   var background = new Sprite(resources.card.texture);
   background.position = position;
   background.anchor.set(0.5, 0.5);
-  background.scale.set(0.5, 0.5);
+  background.width = card_w * 0.5;
+  background.height = card_h * 0.5;
+
   background.rotation = rotation || 0;
   var sticker = new Sprite(resources.blank_card.texture);
   sticker.anchor.set(0.5, 0.5);
@@ -277,6 +292,8 @@ function Card(position, movie, options, rotation) {
 
   var background = new Sprite(resources.card.texture);
   background.anchor.set(0.5, 0.5);
+  background.width = card_w;
+  background.height = card_h;
   container.background = background;
 
   var poster = new Sprite.fromImage(movie.poster_url);
@@ -287,11 +304,11 @@ function Card(position, movie, options, rotation) {
     movie.title = movie.title.substring(0, 12) + "...";
   }
   var title = new PIXI.Text(movie.title, {
-    font: "10px sans-serif",
+    font: card_h * 0.08 +"px sans-serif",
     fill: "black"
   });
   title.anchor.set(0.5, 0.5);
-  title.position.set(0, -card_h * 0.4);
+  title.position.set(0, -title.height - poster.height * 0.5);
 
   container
   // events for drag start
@@ -351,6 +368,9 @@ function Player(position, user, handSize) {
   circle.endFill();
   avatar.addChild(circle);
   avatar.mask = circle;
+
+  player.avatar = avatar;
+  player.user = user;
 
   player.addChild(avatar);
   player.addChild(username);
@@ -680,10 +700,11 @@ function newRound() {
   });
   stage.addChild(hand);
   socket.emit('userHand', currentUser.username, currentUser.cards);
-  console.log(table);
+
   table.children.forEach(function (player) {
     player.cards.children.forEach(function (card) {
-        card.scale.set(0.5,0.5);
+      card.width = card_w * 0.5;
+      card.height = card_h * 0.5;
     });
   });
   pile.removeChildren();
@@ -702,26 +723,30 @@ function gameOver() {
     fill: "white"
   });
   var leadername = leader.text.substring(0, leader.text.indexOf(':'));
+  console.log(leadername);
+
   var winner =  new Text(leadername + ' wins!', {
       font: "60px sans-serif",
       fill: "yellow"
   });
 
+  var fade = 1500;
+
   new TWEEN.Tween(table).to({
     alpha: 0
-  }, 800).onComplete(function () {
+  }, fade).onComplete(function () {
     table.visible = false;
   }).start();
 
   new TWEEN.Tween(hand).to({
     alpha: 0
-  }, 800).onComplete(function () {
+  }, fade).onComplete(function () {
     hand.visible = false;
   }).start();
 
   new TWEEN.Tween(pile).to({
     alpha: 0
-  }, 800).onComplete(function () {
+  }, fade).onComplete(function () {
     pile.visible = false;
   }).start();
 
@@ -746,6 +771,9 @@ function blowUpText(text, size, container) {
   });
   showText.anchor.set(0.5,0.5);
   showText.scale.set(0.5,0.5);
+  if (container.baseContainer) {
+    showText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
+  }
   showText.alpha = 1;
   container.addChild(showText);
   new TWEEN.Tween(showText).to({

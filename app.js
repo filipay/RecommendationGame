@@ -1,5 +1,4 @@
 /*jshint esversion: 6 */
-var mysql = require('mysql');
 var Datastore = require('nedb'),
     db = {};
 
@@ -29,9 +28,10 @@ var time = 0;
 var userMovies = [];
 
 
-function updateMovies() {
+function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
     movies = docs;
+    callback();
   });
 }
 
@@ -97,32 +97,41 @@ function getUser(user) {
   });
 }
 
-function playerConnect(player) {
-  if(players.length < 1) updateMovies(); //TODO wait for movies to update
-  var joinedPlayer = joinedPlayers[player.username];
+function playerConnect(currPlayer) {
+  // if(players.length < 1) updateMovies(); //TODO wait for movies to update
+  console.log(currPlayer);
+  var joinedPlayer = joinedPlayers[currPlayer.username];
   if (joinedPlayer) {
-    this.emit('loadAssets', joinedPlayer.availableMovies);
+    // this.emit('loadAssets', joinedPlayer.availableMovies);
     this.emit('resume', joinedPlayer);
     players.push(joinedPlayer);
   } else {
-    joinedPlayers[player.username] = player;
-    player.roundScore = 0;
-    player.streak = 0;
-    player.socket = this.id;
-    player.availableMovies = movies; //TODO wait fo people to join to serve movies
+    joinedPlayers[currPlayer.username] = currPlayer;
+    currPlayer.roundScore = 0;
+    currPlayer.streak = 0;
+    currPlayer.socket = this.id;
     // player.availableMovies = possibleMovies(player.movieList);
-    this.emit('loadAssets', player.availableMovies);
-    players.push(player);
+    // this.emit('loadAssets', player.availableMovies);
+    players.push(currPlayer);
   }
   if (players.length === 2) {
-    io.sockets.emit('startGame');
-    timer = setInterval(function() {
-      time++;
-      if (time >= 3 * 60) {
-        clearInterval(timer);
-        gameOver();
-      }
-    }, 1000);
+    console.log("here0");
+    updateMovies(function () {
+      console.log("here");
+      io.emit('loadAssets', movies);
+      // player.availableMovies = movies; //TODO wait fo people to join to serve movies
+
+      io.sockets.emit('startGame');
+            console.log("here3");
+      timer = setInterval(function() {
+        time++;
+        if (time >= 3 * 60) {
+          clearInterval(timer);
+          gameOver();
+        }
+      }, 1000);
+      console.log("here4");
+    });
   }
 }
 
@@ -262,7 +271,9 @@ function sendPile() {
 }
 
 function sendTable() {
+  console.log("break?");
   io.sockets.emit('playerJoined', players);
+  console.log("break2?");
 }
 
 function sendLeaderboard() {
@@ -289,6 +300,7 @@ function sendLeaderboard() {
 function userHand(username, cards) {
   if (cards.length === 0) {
     gameOver();
+    return;
   }
   joinedPlayers[username].cards = cards;
 }
@@ -302,7 +314,14 @@ function gameOver() {
 
   //TODO record all the events
   joinedPlayers = {};
+  players = [];
   suggested = {};
+  // movies = [];
+  pile = [];
+  playersFinished = 0;
+  timer = undefined;
+  time = 0;
+  userMovies = [];
 }
 
 function shakeCard(card) {
