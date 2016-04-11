@@ -68,6 +68,7 @@ function selected(event) {
       return m.id === id;
     })) {
     $('#interact').prop('class', 'btn btn-success btn-block disabled');
+    $('#interact').unbind('click');
   } else {
     $('#interact').prop('class', 'btn btn-success btn-block');
     $('#interact').unbind('click').click(function(e) {

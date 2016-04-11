@@ -131,10 +131,11 @@ function updateScore(data) {
   currentUser.score += data.score;
   currentScore.text = currentUser.score;
 
-  new TWEEN.Tween(currentScore.scale).to({
-    x: 1 + Math.min(data.score / 100, 1),
-    y: 1 + Math.min(data.score / 100, 1)
-  }, 200).repeat(1).yoyo(true).start();
+  floatAwayText("+" + data.score, 50, currentScore);
+  // new TWEEN.Tween(currentScore.scale).to({
+  //   x: 1 + Math.min(data.score / 100, 1),
+  //   y: 1 + Math.min(data.score / 100, 1)
+  // }, 200).repeat(1).yoyo(true).start();
 }
 
 function loadPlaceholders() {
@@ -207,8 +208,6 @@ currentScore = new PIXI.Text('0', {
   fill: "white"
 });
 
-highlightAndFade(currentScore, 0.8, 4);
-
 score.addChild(currentScore);
 currentScore.anchor.set(0.5,0.5);
 currentScore.position.x = score.width + 20;
@@ -219,33 +218,44 @@ stage.addChild(score);
 stage.addChild(timeText);
 
 
-var leaderboard = new Container();
-var leader = new Text('', {
-  font: "30px sans-serif",
-  fill: "yellow"
-});
-var others = new Text('', {
-  font: "20px sans-serif",
-  fill: "white",
-  align: "left",
-  lineHeight: 25
-});
-
-leader.position = new Point(0, 0);
-others.position = new Point(0, 50);
-leaderboard.addChild(leader);
-leaderboard.addChild(others);
-leaderboard.position = new Point(window.innerWidth * 0.7, 50);
-
-stage.addChild(leaderboard);
+// var leaderboard = new Container();
+// var leader = new Text('', {
+//   font: "30px sans-serif",
+//   fill: "yellow"
+// });
+// var others = new Text('', {
+//   font: "20px sans-serif",
+//   fill: "white",
+//   align: "left",
+//   lineHeight: 25
+// });
+//
+// leader.position = new Point(0, 0);
+// others.position = new Point(0, 50);
+// leaderboard.addChild(leader);
+// leaderboard.addChild(others);
+// leaderboard.position = new Point(window.innerWidth * 0.7, 50);
+//
+// stage.addChild(leaderboard);
 
 
 function updateLeaderboard(players) {
-  leader.text = players[0].name + ": " + players[0].score;
-  others.text = '';
-  for (var i = 1; i < players.length; i++) {
-    others.text += players[i].name + ": " + players[i].score + '\n';
-  }
+  // leader.text = players[0].name + ": " + players[0].score;
+  // others.text = '';
+  // for (var i = 1; i < players.length; i++) {
+  //   others.text += players[i].name + ": " + players[i].score + '\n';
+  // }
+  table.children.forEach(function (child) {
+    for (var i = 0; i < players.length; i++) {
+      var player = players[i];
+      console.log(player.username);
+      console.log(child.user.username);
+      if (child.user.username === player.username) {
+        floatAwayText("+" + (player.score - parseInt(child.score.text)), 20, child.score);
+        child.score.text = player.score;
+      }
+    }
+  });
 }
 
 function BlankCard(position, rotation) {
@@ -361,6 +371,16 @@ function Player(position, user, handSize) {
   username.anchor.set(0.5, 0.5);
   username.position.set(0, -avatar.height * 0.4);
 
+  var score = new Text("0", {
+    font: "20px sans-serif",
+    fill: "white"
+  });
+  score.anchor.set(0.5, 0.5);
+  score.position.set(0, -avatar.height * 0.6);
+  score.highlight = highlightRainbow(score);
+
+
+
   var circle = new Graphics();
   circle.lineStyle(0);
   circle.beginFill(0xFFFF0B, 0.5);
@@ -371,9 +391,11 @@ function Player(position, user, handSize) {
 
   player.avatar = avatar;
   player.user = user;
+  player.score = score;
 
   player.addChild(avatar);
   player.addChild(username);
+  player.addChild(score);
   // player.addChild(BlankCard(new Point(0, )));
 
   player.cards = createHand(getBlankCardsList(handSize), new Point(0, avatar.height * 0.4), {
@@ -552,9 +574,9 @@ function onDragStart(event) {
     this.origin = new PIXI.Point(this.position.x, this.position.y);
   }
   // highlightAndFade(this.background, Math.random(), 2);
-  floatAwayText("+10",50,this);
+  // floatAwayText("+10",50,this);
   // blowUpText("text: string",50,this);
-  highlightRainbow(this.background, 2);
+  // highlightRainbow(this.background, 2);
 }
 
 function onDragEnd() {
@@ -631,15 +653,18 @@ function shakeCard(username, cardIndex, remove) {
     console.log(player);
     var card = player.cards.children[cardIndex];
     if (remove) {
-      new TWEEN.Tween(card.scale).to({
+      if (card.tween) card.tween.stop();
+      card.tween = new TWEEN.Tween(card.scale).to({
         x: 0,
         y: 0
-      },200).start();
+      },200);
+      card.tween.start();
     } else {
-      new TWEEN.Tween(card.scale).to({
+      card.tween = new TWEEN.Tween(card.scale).to({
         x: 0.8,
         y: 0.8
-      }, 300).repeat(1).yoyo(true).easing(TWEEN.Easing.Elastic.Out).start();
+      }, 300).repeat(1).yoyo(true).easing(TWEEN.Easing.Elastic.Out);
+      card.tween.start();
     }
   }
 }
@@ -703,6 +728,7 @@ function newRound() {
 
   table.children.forEach(function (player) {
     player.cards.children.forEach(function (card) {
+      card.tween.stop();
       card.width = card_w * 0.5;
       card.height = card_h * 0.5;
     });
@@ -711,6 +737,7 @@ function newRound() {
 }
 
 function resume(player) {
+  display = stage;
   currentUser.score = player.score;
   currentScore.text = player.score;
   currentUser.cards = player.cards;
@@ -790,7 +817,7 @@ function blowUpText(text, size, container) {
 function floatAwayText(text, size, container) {
   var hex = hslToHex(Math.random(), 1.0, 0.5);
   var showText = new Text(text, {
-    font: "bold "+size+"px sans-serif",
+    font: size+"px sans-serif",
     fill: hex
   });
   showText.anchor.set(0.5,0.5);
@@ -830,26 +857,29 @@ function highlightAndFade(sprite, hue, duration_s) {
   }).start();
 }
 
-function highlightRainbow(sprite, times) {
+function highlightRainbow(sprite) {
 
   var hsl = {
     hue: 0.0,
     saturation: 1,
     luminosity: 0.6
   };
-  sprite.tint = hslToHex(hsl.hue, hsl.saturation, hsl.luminosity);
 
-  new TWEEN.Tween(hsl).to({
+
+  var tween = new TWEEN.Tween(hsl).to({
     hue: 1.0
-  }, 2000).repeat(times).onUpdate(function () {
+  }, 2000).repeat(Infinity).onUpdate(function () {
     sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
-  }).onComplete(function () {
+  }).onStart(function () {
+    sprite.tint = hslToHex(hsl.hue, hsl.saturation, hsl.luminosity);
+  }).onStop(function () {
     new TWEEN.Tween(hsl).to({
       luminosity: 1.0
     }, 500).onUpdate(function () {
         sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
     }).start();
-  }).start();
+  });
+  return tween;
 }
 
 function hslToHex(h, s, l){

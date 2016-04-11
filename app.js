@@ -103,6 +103,7 @@ function playerConnect(currPlayer) {
   var joinedPlayer = joinedPlayers[currPlayer.username];
   if (joinedPlayer) {
     // this.emit('loadAssets', joinedPlayer.availableMovies);
+    joinedPlayer.socket = this.id;
     this.emit('resume', joinedPlayer);
     players.push(joinedPlayer);
   } else {
@@ -152,6 +153,7 @@ function playerDisconnect() {
 
   io.sockets.emit('playerJoined', players);
   clearInterval(timer);
+  if (players.length === 0) gameOver();
 }
 
 
@@ -271,9 +273,7 @@ function sendPile() {
 }
 
 function sendTable() {
-  console.log("break?");
   io.sockets.emit('playerJoined', players);
-  console.log("break2?");
 }
 
 function sendLeaderboard() {
@@ -284,7 +284,7 @@ function sendLeaderboard() {
   for (var player in joinedPlayers) {
     if (joinedPlayers.hasOwnProperty(player)) {
       var score = {
-        name: joinedPlayers[player].name,
+        username: joinedPlayers[player].username,
         score: joinedPlayers[player].score
       };
       leaderboard.push(score);
@@ -294,7 +294,6 @@ function sendLeaderboard() {
     return p2.score - p1.score;
   });
   io.sockets.emit('updateLeaderboard', leaderboard);
-
 }
 
 function userHand(username, cards) {
@@ -319,6 +318,7 @@ function gameOver() {
   // movies = [];
   pile = [];
   playersFinished = 0;
+  clearInterval(timer);
   timer = undefined;
   time = 0;
   userMovies = [];
