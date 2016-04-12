@@ -26,7 +26,7 @@ var playersFinished = 0;
 var timer;
 var time = 0;
 var userMovies = [];
-
+var maxPlayers = 2;
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
@@ -99,7 +99,6 @@ function getUser(user) {
 
 function playerConnect(currPlayer) {
   // if(players.length < 1) updateMovies(); //TODO wait for movies to update
-  console.log(currPlayer);
   var joinedPlayer = joinedPlayers[currPlayer.username];
   if (joinedPlayer) {
     // this.emit('loadAssets', joinedPlayer.availableMovies);
@@ -115,11 +114,11 @@ function playerConnect(currPlayer) {
     // this.emit('loadAssets', player.availableMovies);
     players.push(currPlayer);
   }
-  if (players.length === 2) {
+  if (players.length === maxPlayers) {
     console.log("here0");
     updateMovies(function () {
       console.log("here");
-      io.emit('loadAssets', movies);
+      io.sockets.emit('loadAssets', movies);
       // player.availableMovies = movies; //TODO wait fo people to join to serve movies
 
       io.sockets.emit('startGame');
@@ -133,7 +132,14 @@ function playerConnect(currPlayer) {
       }, 1000);
       console.log("here4");
     });
+  } else {
+    io.sockets.emit('updateWaitingScreen', {
+      joinedUser: currPlayer.name,
+      noPlayers: players.length,
+      maxPlayers: maxPlayers
+    });
   }
+
 }
 
 
@@ -208,17 +214,22 @@ function updateScore(assignedTo, assignedBy, movie) {
   if (assignedTo.movieList.some(function(userMovie) {
       return userMovie.id === movie;
     })) {
+    var player = joinedPlayers[assignedBy.username];
+
     score = 10;
     score +=
-      score * (Math.min(joinedPlayers[assignedBy.username].streak, 6) / 3);
+      score * (Math.min(player.streak, 6) / 3);
     score = Math.round(score);
     assignedBy.emit('updateScore', {
       score: score
     });
 
-    joinedPlayers[assignedBy.username].roundScore += score;
-    joinedPlayers[assignedBy.username].score += score;
-    joinedPlayers[assignedBy.username].streak += 1;
+    if (player.streak > 0) {
+      showInfo(player.username, "STREAK x" + (player.streak + 1));
+    }
+    player.roundScore += score;
+    player.score += score;
+    player.streak += 1;
   } else {
     //TODO make scoring system better
     //multipliers, bonuses, etc.
@@ -226,21 +237,29 @@ function updateScore(assignedTo, assignedBy, movie) {
     var collaborators = suggested[assignedTo.username][movie];
     if (collaborators.length > 1) {
       for (var i = 0; i < collaborators.length; i++) {
+        var collaborator = joinedPlayers[collaborators[i].username];
         score = (collaborators.length - i + 1) * 10;
-        score += score * (Math.min(joinedPlayers[collaborators[i].username].streak, 6) / 3);
+        score += score * (Math.min(collaborator.streak, 6) / 3);
         score = Math.round(score);
 
-        joinedPlayers[collaborators[i].username].roundScore += score;
-        joinedPlayers[collaborators[i].username].score += score;
+        collaborator.roundScore += score;
+        collaborator.score += score;
         collaborators[i].emit('updateScore', {
           score: score,
         });
-        joinedPlayers[collaborators[i].username].streak += 1;
+        showInfo(collaborator.username, "COLLABORATOR");
+        if (collaborator.streak > 0) {
+          showInfo(collaborator.username, "STREAK x" + (collaborator.streak + 1));
+        }
+
+        collaborator.streak += 1;
+
       }
     } else {
       joinedPlayers[assignedBy.username].streak = 0;
     }
   }
+
   sendLeaderboard();
 }
 
@@ -254,7 +273,9 @@ function roundFinished(userData) {
   this.emit('updateScore', {
     score: score
   });
-
+  if (userData.time > 0) {
+    showInfo(userData.username, "EARLY FINISH");
+  }
   joinedPlayers[userData.username].score += score;
   joinedPlayers[userData.username].roundScore = 0;
   sendLeaderboard();
@@ -265,7 +286,7 @@ function roundFinished(userData) {
     io.sockets.emit('newRound');
     playersFinished = 0;
   }
-  // io.sockets.emit('gameOver');
+
 }
 
 function sendPile() {
@@ -285,6 +306,7 @@ function sendLeaderboard() {
     if (joinedPlayers.hasOwnProperty(player)) {
       var score = {
         username: joinedPlayers[player].username,
+        name: joinedPlayers[player].name,
         score: joinedPlayers[player].score
       };
       leaderboard.push(score);
@@ -345,4 +367,8 @@ function addMovie(movie, user) {
 
 function removeMovie(movie, user) {
   db.users.update({ facebook_id : user }, { $pull: { movies: movie } });
+}
+
+function showInfo(player, info) {
+  io.sockets.emit('showInfo', player, info);
 }

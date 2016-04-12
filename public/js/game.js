@@ -30,6 +30,9 @@ socket.on('startGame', startGame);
 socket.on('setUser', setUser);
 socket.on('gameOver', gameOver);
 socket.on('shakeCard', shakeCard);
+socket.on('updateWaitingScreen', updateWaitingScreen);
+socket.on('showInfo', showInfo);
+
 var renderer = PIXI.autoDetectRenderer(
   width, height, {
     antialias: true,
@@ -59,16 +62,17 @@ waitingScreen.baseContainer = true;
 var display = waitingScreen;
 
 
-var waitingText = new Text("Hello world!", {
+var waitingText = new Text("", {
   font: "40px sans-serif",
   fill: 0xFFFF0B
 });
 
 waitingText.anchor.set(0.5,0.5);
-console.log();
 waitingText.position.set((window.innerWidth) * 0.5, (window.innerHeight ) * 0.5);
 waitingScreen.addChild(waitingText);
-blowUpText("hello",20,waitingText);
+
+
+
 requestAnimationFrame(animate);
 
 function getRandomInt(min, max) {
@@ -86,6 +90,11 @@ function getRandomDouble(min, max) {
 //     socket.emit('joinGame', currentUser);
 //   });
 // }
+
+function updateWaitingScreen(data) {
+  waitingText.text = "Waiting for players... (" + data.noPlayers + " / " + data.maxPlayers+")";
+  floatAwayText(data.joinedUser + " joined!", 60, display);
+}
 
 function setGameUser(user) {
   currentUser = new User(user.name, user.facebook_id, user.picture, user.movies);
@@ -210,7 +219,7 @@ currentScore = new PIXI.Text('0', {
 
 score.addChild(currentScore);
 currentScore.anchor.set(0.5,0.5);
-currentScore.position.x = score.width + 20;
+currentScore.position.x = score.width + 30;
 currentScore.position.y = score.height * 0.5;
 currentScore.scale.set(1, 1);
 score.position.set(50, 50);
@@ -245,6 +254,11 @@ function updateLeaderboard(players) {
   // for (var i = 1; i < players.length; i++) {
   //   others.text += players[i].name + ": " + players[i].score + '\n';
   // }
+  var highlight = true;
+  table.leader = players[0];
+  if (players[0].score === players[1].score) {
+    highlight = false;
+  }
   for (var i = 0; i < players.length; i++) {
     var player = table[players[i].username];
     if (player) {
@@ -255,7 +269,7 @@ function updateLeaderboard(players) {
         floatAwayText("+" + diff, 30, player.score);
         player.score.text = players[i].score;
       }
-      if (i === 0) {
+      if (i === 0 && highlight) {
         player.score.highlight = highlightRainbow(player.score).start();
       }
     }
@@ -478,6 +492,8 @@ function createTable(players) {
       }, 600).easing(TWEEN.Easing.Elastic.Out).start();
       table.addChild(seat);
       count++;
+    } else {
+      table[player.username] = Player(new Point(0,0), currentUser, 0);
     }
   });
   stage.addChildAt(table, 2);
@@ -691,7 +707,6 @@ function assignCard(card) {
       username: currentUser.username,
       time: time
     });
-    blowUpText("EARLY FINISH", 60, stage);
   }
   card.parent.removeChild(card);
 }
@@ -733,7 +748,7 @@ function newRound() {
 
   table.children.forEach(function (player) {
     player.cards.children.forEach(function (card) {
-      card.tween.stop();
+      if (card.tween) card.tween.stop();
       card.width = card_w * 0.5;
       card.height = card_h * 0.5;
     });
@@ -754,10 +769,8 @@ function gameOver() {
     font: "100px sans-serif",
     fill: "white"
   });
-  var leadername = leader.text.substring(0, leader.text.indexOf(':'));
-  console.log(leadername);
 
-  var winner =  new Text(leadername + ' wins!', {
+  var winner =  new Text(table.leader.name + ' wins!', {
       font: "60px sans-serif",
       fill: "yellow"
   });
@@ -795,40 +808,53 @@ function gameOver() {
 }
 
 
-function blowUpText(text, size, container) {
-  var hex = hslToHex(Math.random(), 1.0, 0.5);
+function blowUpText(text, size, container, offset) {
+  var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
     font: "bold "+size+"px sans-serif",
     fill: hex
   });
+  offset = offset || {};
+  offset.x = offset.x || 0;
+  offset.y = offset.y || 0;
   showText.anchor.set(0.5,0.5);
   showText.scale.set(0.5,0.5);
+
   if (container.baseContainer) {
-    showText.position.set(window.innerWidth * 0.5, window.innerHeight * 0.5);
+    showText.position.set(window.innerWidth * 0.5 + offset.x, window.innerHeight * 0.5 + offset.y);
+  } else {
+    showText.position.set(offset.x, offset.y);
   }
   showText.alpha = 1;
   container.addChild(showText);
   new TWEEN.Tween(showText).to({
-    alpha: 0
-  }, 1500).start();
+    alpha: 0.0
+  }, 2000).onComplete(function () {
+    container.removeChild(showText);
+  }).start();
   new TWEEN.Tween(showText.scale).to({
     x: 1,
     y: 1
-  }, 1500).onComplete(function () {
-    container.removeChild(showText);
-  }).start();
+  }, 1500).start();
 }
 
-function floatAwayText(text, size, container) {
-  var hex = hslToHex(Math.random(), 1.0, 0.5);
+function floatAwayText(text, size, container, offset) {
+  var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
     font: size+"px sans-serif",
     fill: hex
   });
+  offset = offset || {};
+  offset.x = offset.x || 0;
+  offset.y = offset.y || 0;
   showText.anchor.set(0.5,0.5);
   showText.alpha = 1;
-  showText.position.x = 0;
-  showText.position.y = -50;
+  if (container.baseContainer) {
+    showText.position.set(window.innerWidth * 0.5 + offset.x, window.innerHeight * 0.5 + offset.y);
+  } else {
+    showText.position.set(offset.x, -50 + offset.y);
+  }
+
   container.addChild(showText);
   new TWEEN.Tween(showText).to({
     alpha: 0
@@ -891,7 +917,7 @@ function hslToHex(h, s, l){
 
     if(s === 0){
         r = g = b = l; // achromatic
-    }else{
+    } else {
         var hue2rgb = function hue2rgb(p, q, t){
             if(t < 0) t += 1;
             if(t > 1) t -= 1;
@@ -911,4 +937,17 @@ function hslToHex(h, s, l){
     g = componentToHex(Math.round(g * 255));
     b = componentToHex(Math.round(b * 255));
     return parseInt(r+g+b, 16);
+}
+
+function showInfo(player, info) {
+  if (player === currentUser.username) {
+    blowUpText(info, 60, display);
+  } else {
+    table.children.forEach(function (child) {
+      if (player === child.user.username) {
+        var offset = { y: -40 };
+        floatAwayText(info, 40, child.score, offset);
+      }
+    });
+  }
 }
