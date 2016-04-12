@@ -247,9 +247,11 @@ function updateScore(assignedTo, assignedBy, movie) {
         collaborators[i].emit('updateScore', {
           score: score,
         });
-        showInfo(collaborator.username, "COLLABORATOR");
         if (collaborator.streak > 0) {
-          showInfo(collaborator.username, "STREAK x" + (collaborator.streak + 1));
+          showInfo(collaborator.username,
+            "STREAK x" + (collaborator.streak + 1) + "\nCOLLABORATOR");
+        } else {
+          showInfo(collaborator.username, "COLLABORATOR");
         }
 
         collaborator.streak += 1;

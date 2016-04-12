@@ -812,7 +812,8 @@ function blowUpText(text, size, container, offset) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
     font: "bold "+size+"px sans-serif",
-    fill: hex
+    fill: hex,
+    align: "center"
   });
   offset = offset || {};
   offset.x = offset.x || 0;
@@ -939,6 +940,7 @@ function hslToHex(h, s, l){
     return parseInt(r+g+b, 16);
 }
 
+//TODO preferably use a queue system here so user doesnt get bombarded with info
 function showInfo(player, info) {
   if (player === currentUser.username) {
     blowUpText(info, 60, display);
