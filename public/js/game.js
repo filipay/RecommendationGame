@@ -245,17 +245,21 @@ function updateLeaderboard(players) {
   // for (var i = 1; i < players.length; i++) {
   //   others.text += players[i].name + ": " + players[i].score + '\n';
   // }
-  table.children.forEach(function (child) {
-    for (var i = 0; i < players.length; i++) {
-      var player = players[i];
-      console.log(player.username);
-      console.log(child.user.username);
-      if (child.user.username === player.username) {
-        floatAwayText("+" + (player.score - parseInt(child.score.text)), 20, child.score);
-        child.score.text = player.score;
+  for (var i = 0; i < players.length; i++) {
+    var player = table[players[i].username];
+    if (player) {
+      var diff = players[i].score - parseInt(player.score.text);
+
+      player.score.highlight.stop();
+      if (diff > 0) {
+        floatAwayText("+" + diff, 30, player.score);
+        player.score.text = players[i].score;
+      }
+      if (i === 0) {
+        player.score.highlight = highlightRainbow(player.score).start();
       }
     }
-  });
+  }
 }
 
 function BlankCard(position, rotation) {
@@ -372,7 +376,7 @@ function Player(position, user, handSize) {
   username.position.set(0, -avatar.height * 0.4);
 
   var score = new Text("0", {
-    font: "20px sans-serif",
+    font: "30px sans-serif",
     fill: "white"
   });
   score.anchor.set(0.5, 0.5);
@@ -467,6 +471,7 @@ function createTable(players) {
 
       var point = new Point(x, y);
       var seat = Player(origin, new User(player.name, player.username, player.avatar), player.cards.length || 5);
+      table[player.username] = seat;
       new TWEEN.Tween(seat.position).to({
         x: point.x,
         y: point.y
@@ -865,13 +870,12 @@ function highlightRainbow(sprite) {
     luminosity: 0.6
   };
 
-
   var tween = new TWEEN.Tween(hsl).to({
     hue: 1.0
   }, 2000).repeat(Infinity).onUpdate(function () {
     sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
   }).onStart(function () {
-    sprite.tint = hslToHex(hsl.hue, hsl.saturation, hsl.luminosity);
+    sprite.tint = hslToHex(this.hue, this.saturation, this.luminosity);
   }).onStop(function () {
     new TWEEN.Tween(hsl).to({
       luminosity: 1.0
