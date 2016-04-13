@@ -716,6 +716,9 @@ function placeOnPile(movies) {
     x: 200,
     y: 200
   };
+
+  //TODO highlight card if user has it
+
   movies.forEach(function(movie) {
     var x = getRandomInt(0 + padding.x, pile.width - padding.x),
       y = getRandomInt(0 + padding.y, pile.height - padding.y),
