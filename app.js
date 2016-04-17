@@ -26,7 +26,7 @@ var playersFinished = 0;
 var timer;
 var time = 0;
 var userMovies = [];
-var maxPlayers = 2;
+var maxPlayers = 3;
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
