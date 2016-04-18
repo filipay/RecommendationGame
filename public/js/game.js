@@ -438,6 +438,12 @@ function createHand(movies, position, options, rotation) {
 
   var rad_step = rad_diff / movies.length;
 
+  var playSound = function(card) {
+    return function () {
+      card.placeSound.play();
+    };
+  };
+
   for (i = 0; i < movies.length; i++) {
 
     var x = i * (card_w + space);
@@ -451,9 +457,7 @@ function createHand(movies, position, options, rotation) {
       new TWEEN.Tween(card.position).to({
         x: point.x,
         y: point.y
-      }, 100).easing(TWEEN.Easing.Elastic.Out).delay(500).onComplete(function() {
-        card.placeSound.play();
-      }).start();
+      }, 100).easing(TWEEN.Easing.Elastic.Out).delay(500).onComplete(playSound(card)).start();
     }
     card.index = i;
     card.scale = card.scale || new Point(1,1);
@@ -511,6 +515,15 @@ function createPile(position, size) {
   return pile;
 }
 
+var bin;
+function Bin() {
+  var bin = new Sprite.fromImage('images/bin.png');
+  bin.anchor.set(0.5,0.5);
+  bin.position.set(hand.position.x - 150, hand.position.y);
+  bin.width = bin.height = 100;
+
+  return bin;
+}
 
 function setup() {
   if (!currentUser.cards) {
@@ -533,6 +546,9 @@ function setup() {
     assignable: true
   });
   stage.addChildAt(hand, stage.children.length - 1);
+
+  bin = Bin();
+  stage.addChildAt(bin, stage.children.length - 2);
 
   socket.emit('requestPile');
   socket.emit('requestTable');
@@ -632,11 +648,16 @@ function onDragMove() {
 
     this.position.x = newPosition.x;
     this.position.y = newPosition.y;
-    if (this.assignable) isCardOnPlayer(this);
+    if (this.assignable) isCardOnAvatar(this);
   }
 }
 
-function isCardOnPlayer(card) {
+function isCardOnAvatar(card) {
+  //TODO fix this
+  // if (bin.containsPoint(card.toGlobal(new Point(0,0)))) {
+  //   return (card.assignedTo = {username: "bin"});
+  // }
+
   var players = table.children;
   table.children.some(function(player) {
     var avatar = player.children[0];
@@ -717,8 +738,6 @@ function placeOnPile(movies) {
     y: 200
   };
 
-  //TODO highlight card if user has it
-
   movies.forEach(function(movie) {
     var x = getRandomInt(0 + padding.x, pile.width - padding.x),
       y = getRandomInt(0 + padding.y, pile.height - padding.y),
@@ -734,6 +753,18 @@ function placeOnPile(movies) {
     }, 500).easing(TWEEN.Easing.Bounce.Out).start();
     card.assignSound.play();
     pile.addChild(card);
+
+    var highlight;
+    hand.children.some(function (cardInHand) {
+        if (cardInHand.id === movie.id) {
+          highlight = cardInHand;
+        }
+        return highlight;
+    });
+
+    if (highlight) {
+      highlightAndFade(highlight.background, Math.random(), 1.5);
+    }
   });
 
 }
@@ -811,14 +842,16 @@ function gameOver() {
 }
 
 
-function blowUpText(text, size, container, offset) {
+function blowUpText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
     font: "bold "+size+"px sans-serif",
     fill: hex,
     align: "center"
   });
-  offset = offset || {};
+  options = options || {};
+  var delay = options.delay || 0;
+  var offset = options.offset || {};
   offset.x = offset.x || 0;
   offset.y = offset.y || 0;
   showText.anchor.set(0.5,0.5);
@@ -830,25 +863,31 @@ function blowUpText(text, size, container, offset) {
     showText.position.set(offset.x, offset.y);
   }
   showText.alpha = 1;
-  container.addChild(showText);
+
   new TWEEN.Tween(showText).to({
     alpha: 0.0
-  }, 2000).onComplete(function () {
+  }, 2000).onStart(function () {
+    container.addChild(showText);
+  }).delay(delay).onComplete(function () {
     container.removeChild(showText);
+    if (options.onComplete) options.onComplete();
   }).start();
+
   new TWEEN.Tween(showText.scale).to({
     x: 1,
     y: 1
-  }, 1500).start();
+  }, 1500).delay(delay).start();
 }
 
-function floatAwayText(text, size, container, offset) {
+function floatAwayText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
     font: size+"px sans-serif",
     fill: hex
   });
-  offset = offset || {};
+  options = options || {};
+  var delay = options.delay || 0;
+  var offset = options.offset || {};
   offset.x = offset.x || 0;
   offset.y = offset.y || 0;
   showText.anchor.set(0.5,0.5);
@@ -859,15 +898,18 @@ function floatAwayText(text, size, container, offset) {
     showText.position.set(offset.x, -50 + offset.y);
   }
 
-  container.addChild(showText);
   new TWEEN.Tween(showText).to({
     alpha: 0
-  }, 1500).onComplete(function () {
+  }, 1500).onStart(function () {
+    container.addChild(showText);
+  }).delay(delay).onComplete(function () {
     container.removeChild(showText);
+    if (options.onComplete) options.onComplete();
   }).start();
+
   new TWEEN.Tween(showText.position).to({
     y: "-150"
-  }, 1000).start();
+  }, 1000).delay(delay).start();
 }
 
 function componentToHex(c) {
@@ -943,16 +985,25 @@ function hslToHex(h, s, l){
     return parseInt(r+g+b, 16);
 }
 
-//TODO preferably use a queue system here so user doesnt get bombarded with info
+//TODO testing
+var queue = 0;
 function showInfo(player, info) {
+  var options = {};
+  options.delay = queue * 500;
+  options.onComplete = function () {
+    queue--;
+  };
+  queue++;
+
   if (player === currentUser.username) {
-    blowUpText(info, 60, display);
+    blowUpText(info, 60, display, options);
   } else {
     table.children.forEach(function (child) {
       if (player === child.user.username) {
-        var offset = { y: -40 };
-        floatAwayText(info, 40, child.score, offset);
+        options.offset = { y: -40 };
+        floatAwayText(info, 40, child.score, options);
       }
     });
   }
+
 }

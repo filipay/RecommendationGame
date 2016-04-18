@@ -26,7 +26,7 @@ var playersFinished = 0;
 var timer;
 var time = 0;
 var userMovies = [];
-var maxPlayers = 3;
+var maxPlayers = 2;
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
@@ -368,7 +368,11 @@ function addMovie(movie, user) {
 }
 
 function removeMovie(movie, user) {
-  db.users.update({ facebook_id : user }, { $pull: { movies: movie } });
+  console.log(movie.id);
+  db.users.update({ facebook_id : user }, { $pull: { movies: movie } }, {returnUpdatedDocs: true}, function (err, num, aff) {
+    if (err) throw err;
+    console.log(aff);
+  });
 }
 
 function showInfo(player, info) {

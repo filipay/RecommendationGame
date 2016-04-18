@@ -95,18 +95,22 @@ function setUserMovies() {
   var movies = $('.list-group.user-movies');
   movies.html('');
 
-  var button = function(e) {
-    socket.emit('removeMovie', movie, FB.me.facebook_id);
-    FB.me.movies.pop(movie);
-    $(e.target).parent().parent().remove();
+  var button = function (movie) {
+    return function(e) {
+      socket.emit('removeMovie', movie, FB.me.facebook_id);
+      FB.me.movies.pop(movie);
+      $(e.target).parent().parent().remove();
+    };
   };
+
+
   for (var i = 0; i < FB.me.movies.length; i++) {
     var movie = FB.me.movies[i];
     console.log(movie);
     var new_listing = listing.clone();
     new_listing.prepend((i + 1) + '. ' + movie.title);
     new_listing.attr('data-movieid', movie.id);
-    new_listing.find('.btn').on('click', button);
+    new_listing.find('.btn').on('click', button(movie));
     movies.append(new_listing);
   }
 }
