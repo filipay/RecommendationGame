@@ -26,7 +26,8 @@ var timer;
 var time = 0;
 var userMovies = [];
 var maxPlayers = 2;
-
+var recommendations;
+var gameId;
 var bin = {
   username: 0,
   name: 'bin',
@@ -147,9 +148,10 @@ function playerConnect(currPlayer) {
   if (players.length === maxPlayers) {
 
     updateMovies(function () {
+      gameId = Date.now();
+      recommendations[gameId] = {};
       var deck = createDeck(60);
 
-      console.log(deck);
       io.sockets.emit('loadAssets', deck);
       // player.availableMovies = movies; //TODO wait fo people to join to serve movies
 
@@ -213,16 +215,15 @@ function cardAssigned(data) {
     }
   });
 
-  if (data.assignedTo === bin.username) {
-    assignedPlayer = bin;
-  }
-  this.username = data.assignedBy;
-  updateScore(assignedPlayer, this, data.id);
 
-  if (assignedPlayer.username !== bin.username) {
+  this.username = data.assignedBy;
+
+  if (data.assignedTo === bin.username) {
+    checkBin(this, data.id);
+  } else {
+    updateScore(assignedPlayer, this, data.id);
     var chosen_movie = getMovie(data.id);
     pile.push(chosen_movie);
-
     io.sockets.emit('placeOnPile', [chosen_movie]);
   }
 }
@@ -247,9 +248,27 @@ function addCollaborator(assignedTo, assignedBy, movie) {
   }
 }
 
+function checkBin(assignedBy, movie) {
+  var player = joinedPlayers[assignedBy.username];
+  var movies = userMovies.unique(player.movieList);
+  if (movies.some(function (m) {
+    return m.id === movie;
+  })) {
+    console.log('true');
+    var score = -10;
+    player.score += score;
+    assignedBy.emit('updateScore', {
+      score: score
+    });
+    showInfo(player.username, "UNLUCKY!");
+  }
+}
+
 function updateScore(assignedTo, assignedBy, movie) {
   console.log(assignedTo.username);
   var score = 0;
+  var date =  Date.now();
+  var recommendation = {};
   if (assignedTo.movieList.some(function(userMovie) {
       return userMovie.id === movie;
     })) {
@@ -416,4 +435,11 @@ function removeMovie(movie, user) {
 
 function showInfo(player, info) {
   io.sockets.emit('showInfo', player, info);
+}
+
+//TODO this
+function storePlayerInfo(player) {
+  var info = {};
+  info.score = player.score;
+  info.username = player
 }
