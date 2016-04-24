@@ -14,7 +14,6 @@ db.movies.ensureIndex( {fieldName: 'id', unique: true}, function (err) {
   if (err) throw err;
 });
 
-
 var io;
 var gameSocket;
 var joinedPlayers = {};
@@ -27,6 +26,13 @@ var timer;
 var time = 0;
 var userMovies = [];
 var maxPlayers = 2;
+
+var bin = {
+  username: 0,
+  name: 'bin',
+  movieList: [],
+  roundScore: 0
+};
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
@@ -58,16 +64,39 @@ exports.initGame = function(s_io, socket) {
 
 };
 
-function possibleMovies(player_movies) {
-  var possibleMovies = [];
-  movies.forEach(function(m) {
-    if (!player_movies.some(function(elem) {
-        return elem.id === m.id;
-      })) {
-      possibleMovies.push(m);
+Array.prototype.shuffle = function () {
+  var j, x, i;
+  a = this;
+  for (i = a.length; i; i -= 1) {
+      j = Math.floor(Math.random() * i);
+      x = a[i - 1];
+      a[i - 1] = a[j];
+      a[j] = x;
+  }
+};
+
+Array.prototype.unique = function (array) {
+  var set = {};
+  this.forEach(function(movie) {
+    set[movie.id] = movie;
+  });
+  array.forEach(function(movie) {
+    if (set[movie.id]) {
+      delete set[movie.id];
     }
   });
-  return possibleMovies;
+  return Object.keys(set).map(function(key) { return set[key]; });
+};
+
+function createDeck(size) {
+  var deck = [];
+  players.forEach(function (player) {
+    deck.push.apply(deck, player.movieList.slice(0,15));
+  });
+  var randomMovies = movies.unique(userMovies);
+  randomMovies.shuffle();
+  deck.push.apply(deck, randomMovies.slice(0, size - deck.length));
+  return deck;
 }
 
 function amountOfPlayers() {
@@ -101,7 +130,7 @@ function playerConnect(currPlayer) {
   // if(players.length < 1) updateMovies(); //TODO wait for movies to update
   var joinedPlayer = joinedPlayers[currPlayer.username];
   if (joinedPlayer) {
-    // this.emit('loadAssets', joinedPlayer.availableMovies);
+    this.emit('loadAssets', joinedPlayer.availableMovies);
     joinedPlayer.socket = this.id;
     this.emit('resume', joinedPlayer);
     players.push(joinedPlayer);
@@ -110,19 +139,22 @@ function playerConnect(currPlayer) {
     currPlayer.roundScore = 0;
     currPlayer.streak = 0;
     currPlayer.socket = this.id;
+    userMovies.push.apply(userMovies, currPlayer.movieList);
     // player.availableMovies = possibleMovies(player.movieList);
     // this.emit('loadAssets', player.availableMovies);
     players.push(currPlayer);
   }
   if (players.length === maxPlayers) {
-    console.log("here0");
+
     updateMovies(function () {
-      console.log("here");
-      io.sockets.emit('loadAssets', movies);
+      var deck = createDeck(60);
+
+      console.log(deck);
+      io.sockets.emit('loadAssets', deck);
       // player.availableMovies = movies; //TODO wait fo people to join to serve movies
 
       io.sockets.emit('startGame');
-            console.log("here3");
+
       timer = setInterval(function() {
         time++;
         if (time >= 3 * 60) {
@@ -130,7 +162,7 @@ function playerConnect(currPlayer) {
           gameOver();
         }
       }, 1000);
-      console.log("here4");
+
     });
   } else {
     io.sockets.emit('updateWaitingScreen', {
@@ -180,12 +212,19 @@ function cardAssigned(data) {
       assignedPlayer = player;
     }
   });
+
+  if (data.assignedTo === bin.username) {
+    assignedPlayer = bin;
+  }
   this.username = data.assignedBy;
   updateScore(assignedPlayer, this, data.id);
-  var chosen_movie = getMovie(data.id);
-  pile.push(chosen_movie);
 
-  io.sockets.emit('placeOnPile', [chosen_movie]);
+  if (assignedPlayer.username !== bin.username) {
+    var chosen_movie = getMovie(data.id);
+    pile.push(chosen_movie);
+
+    io.sockets.emit('placeOnPile', [chosen_movie]);
+  }
 }
 
 function getMovie(id) {

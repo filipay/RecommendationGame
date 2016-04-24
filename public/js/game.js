@@ -1,6 +1,7 @@
 /**
  * Created by filip on 14/10/15.
  */
+
 var randomMovies = [];
 var currentUser;
 var cards;
@@ -106,8 +107,17 @@ setGameUser(FB.me);
 
 function loadAssets(movies) {
 
+  console.log(movies);
   randomMovies = movies;
+  var uniqueMovies = {};
   movies.forEach(function(movie) {
+    uniqueMovies[movie.id] = movie;
+  });
+  var loadMovies = Object.keys(uniqueMovies).map(function(key) {
+    return uniqueMovies[key];
+  });
+
+  loadMovies.forEach(function(movie) {
     console.log(movie);
     loader.add(movie.poster_url);
   });
@@ -312,11 +322,7 @@ function Card(position, movie, options, rotation) {
   container.lookAtSound = new Howl({
     urls: [cardFeelSound[getRandomInt(0, cardFeelSound.length - 1)]]
   });
-  for (var key in movie) {
-    if (movie.hasOwnProperty(key)) {
-      container[key] = movie[key];
-    }
-  }
+  $.extend(container, movie);
 
   var background = new Sprite(resources.card.texture);
   background.anchor.set(0.5, 0.5);
@@ -521,7 +527,12 @@ function Bin() {
   bin.anchor.set(0.5,0.5);
   bin.position.set(hand.position.x - 150, hand.position.y);
   bin.width = bin.height = 100;
-
+  bin.username = 0;
+  bin.name = 'bin';
+  bin.movieList = [];
+  bin.sound = new Howl({
+    urls: ['sounds/bin.mp3']
+  });
   return bin;
 }
 
@@ -653,11 +664,12 @@ function onDragMove() {
 }
 
 function isCardOnAvatar(card) {
-  //TODO fix this
-  // if (bin.containsPoint(card.toGlobal(new Point(0,0)))) {
-  //   return (card.assignedTo = {username: "bin"});
-  // }
+  // TODO fix this
+  if (bin.containsPoint(card.toGlobal(new Point(0,0)))) {
+    return (card.assignedTo = bin);
 
+  }
+  console.log("blleeeeeh");
   var players = table.children;
   table.children.some(function(player) {
     var avatar = player.children[0];
@@ -712,6 +724,7 @@ function shakeCard(username, cardIndex, remove) {
 }
 
 function assignCard(card) {
+  if (card.assignedTo.sound) card.assignedTo.sound.play();
   socket.emit('assignCard', {
     assignedBy: currentUser.username,
     assignedTo: card.assignedTo.username,
@@ -811,24 +824,13 @@ function gameOver() {
 
   var fade = 1500;
 
-  new TWEEN.Tween(table).to({
-    alpha: 0
-  }, fade).onComplete(function () {
-    table.visible = false;
-  }).start();
-
-  new TWEEN.Tween(hand).to({
-    alpha: 0
-  }, fade).onComplete(function () {
-    hand.visible = false;
-  }).start();
-
-  new TWEEN.Tween(pile).to({
-    alpha: 0
-  }, fade).onComplete(function () {
-    pile.visible = false;
-  }).start();
-
+  stage.children.forEach(function (child) {
+    new TWEEN.Tween(child).to({
+      alpha: 0
+    }, fade).onComplete(function () {
+      child.visible = false;
+    }).start();
+  });
 
   gameOverText.position = new Point((window.innerWidth - gameOverText.width)*0.5, (window.innerHeight - gameOverText.height)*0.5);
   winner.position = new Point((gameOverText.width - winner.width)*0.5, 120);
