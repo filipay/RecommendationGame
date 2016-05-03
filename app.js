@@ -441,5 +441,5 @@ function showInfo(player, info) {
 function storePlayerInfo(player) {
   var info = {};
   info.score = player.score;
-  info.username = player
+  info.username = player;
 }
