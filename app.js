@@ -1,6 +1,6 @@
 /*jshint esversion: 6 */
 var Datastore = require('nedb'),
-    db = {};
+    db = {}, autoCompact = 10 * 1000;
 
 db.users = new Datastore({filename: 'db/users.db', autoload: true });
 db.movies = new Datastore({filename: 'db/movies.db', autoload: true });
@@ -14,6 +14,14 @@ db.movies.ensureIndex( {fieldName: 'id', unique: true}, function (err) {
   if (err) throw err;
 });
 
+db.recommendations.ensureIndex( {fieldName: 'gameId', unique: true}, function (err) {
+  if (err) throw err;
+});
+
+db.users.persistence.setAutocompactionInterval(autoCompact);
+db.movies.persistence.setAutocompactionInterval(autoCompact);
+db.recommendations.persistence.setAutocompactionInterval(autoCompact);
+
 var io;
 var gameSocket;
 var joinedPlayers = {};
@@ -26,8 +34,9 @@ var timer;
 var time = 0;
 var userMovies = [];
 var maxPlayers = 2;
-var recommendations;
+var recommendations = {};
 var gameId;
+var roundNo = 0;
 var bin = {
   username: 0,
   name: 'bin',
@@ -64,6 +73,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('removeMovie', removeMovie);
 
 };
+
 
 Array.prototype.shuffle = function () {
   var j, x, i;
@@ -202,18 +212,18 @@ function cardAssigned(data) {
 
   var cards = joinedPlayers[data.assignedBy].cards;
   cards.forEach(function(card) {
-    if (card.id == data.id) {
+    if (card === data.id) {
       cards.splice(cards.indexOf(card), 1);
     }
   });
 
-  var assignedPlayer;
+  var assignedPlayer = joinedPlayers[data.assignedTo];
 
-  players.forEach(function(player) {
-    if (player.username === data.assignedTo) {
-      assignedPlayer = player;
-    }
-  });
+  // players.forEach(function(player) {
+  //   if (player.username === data.assignedTo) {
+  //     assignedPlayer = player;
+  //   }
+  // });
 
 
   this.username = data.assignedBy;
@@ -249,29 +259,40 @@ function addCollaborator(assignedTo, assignedBy, movie) {
 }
 
 function checkBin(assignedBy, movie) {
+  var recommendation = {};
+  recommendation.known = false;
   var player = joinedPlayers[assignedBy.username];
+  //Get movies of players (excluding current player)
   var movies = userMovies.unique(player.movieList);
+
+  //Check if any movie in the set corresponds to a known movie of another player
   if (movies.some(function (m) {
     return m.id === movie;
   })) {
-    console.log('true');
+    recommendation.known = true;
     var score = -10;
     player.score += score;
     assignedBy.emit('updateScore', {
       score: score
     });
     showInfo(player.username, "UNLUCKY!");
+    sendLeaderboard();
   }
+  recommendation.playerId = assignedBy.username;
+  recommendation.friendId = bin.username;
+  recommendation.movieId = movie;
+  storePlayerInfo(recommendation);
+
 }
 
 function updateScore(assignedTo, assignedBy, movie) {
   console.log(assignedTo.username);
   var score = 0;
-  var date =  Date.now();
   var recommendation = {};
   if (assignedTo.movieList.some(function(userMovie) {
       return userMovie.id === movie;
     })) {
+    recommendation.known = true;
     var player = joinedPlayers[assignedBy.username];
 
     score = 10;
@@ -289,10 +310,10 @@ function updateScore(assignedTo, assignedBy, movie) {
     player.score += score;
     player.streak += 1;
   } else {
-    //TODO make scoring system better
-    //multipliers, bonuses, etc.
+
     addCollaborator(assignedTo.username, assignedBy, movie);
     var collaborators = suggested[assignedTo.username][movie];
+
     if (collaborators.length > 1) {
       for (var i = 0; i < collaborators.length; i++) {
         var collaborator = joinedPlayers[collaborators[i].username];
@@ -318,15 +339,24 @@ function updateScore(assignedTo, assignedBy, movie) {
     } else {
       joinedPlayers[assignedBy.username].streak = 0;
     }
+
+    recommendation.known = false;
+
+    recommendation.collaborators = collaborators.map(function (player) {
+      return player.username;
+    });
   }
+  recommendation.playerId = assignedBy.username;
+  recommendation.playerScore = joinedPlayers[assignedBy.username].score;
+  recommendation.friendId = assignedTo.username;
+  recommendation.movieId = movie;
+  storePlayerInfo(recommendation);
 
   sendLeaderboard();
 }
 
 function roundFinished(userData) {
-  console.log(userData);
-  console.log('playersFinished = ' + playersFinished);
-  console.log('playerLen = ' + players.length);
+
   playersFinished++;
   var score = joinedPlayers[userData.username].roundScore;
   score = Math.round(score * (userData.time / 10));
@@ -340,11 +370,11 @@ function roundFinished(userData) {
   joinedPlayers[userData.username].roundScore = 0;
   sendLeaderboard();
 
-  if (playersFinished == players.length) {
-    console.log('newROUND!!!!');
+  if (playersFinished === players.length) {
     pile = [];
     io.sockets.emit('newRound');
     playersFinished = 0;
+    roundNo++;
   }
 
 }
@@ -407,7 +437,6 @@ function gameOver() {
 }
 
 function shakeCard(card) {
-  console.log(card);
   io.sockets.emit('shakeCard', card.username, card.index, card.remove);
 }
 
@@ -437,9 +466,31 @@ function showInfo(player, info) {
   io.sockets.emit('showInfo', player, info);
 }
 
+
+// 1. The player id
+// 2. The friend id
+// 3. The movie id
+// 4. The game id
+// 5. The game round id
+// 6. The player ids of the other players
+// 7. The timestamp
+// 8. The order of the match in that round.
+// 9. The current score of the player at the time of the match.
+// 10. Type of match (known vs unknown)
 //TODO this
-function storePlayerInfo(player) {
-  var info = {};
-  info.score = player.score;
-  info.username = player;
+function storePlayerInfo(data) {
+  data.timestamp = Date.now();
+  var game = recommendations[gameId] || {};
+  var round_id = "round_" + roundNo;
+  game.gameId = gameId;
+  game.players = game.players || players.map(function (player) {
+    return player.username;
+  });
+  var round = game[round_id] || {};
+  round["match_" + data.timestamp] = data;
+  game[round_id] = round;
+
+  db.recommendations.update( { gameId : game.gameId }, game, { upsert : true }, function (err) {
+    if (err) throw err;
+  });
 }
