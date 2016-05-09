@@ -43,8 +43,8 @@ var renderer = PIXI.autoDetectRenderer(
   }
 );
 
-renderer.view.style.position = "absolute";
-renderer.view.style.display = "block";
+renderer.view.style.position = 'absolute';
+renderer.view.style.display = 'block';
 renderer.resize(window.innerWidth, window.innerHeight);
 renderer.backgroundColor = 0x0B5394;
 
@@ -63,8 +63,8 @@ waitingScreen.baseContainer = true;
 var display = waitingScreen;
 
 
-var waitingText = new Text("", {
-  font: "40px sans-serif",
+var waitingText = new Text('', {
+  font: '40px sans-serif',
   fill: 0xFFFF0B
 });
 
@@ -93,8 +93,8 @@ function getRandomDouble(min, max) {
 // }
 
 function updateWaitingScreen(data) {
-  waitingText.text = "Waiting for players... (" + data.noPlayers + " / " + data.maxPlayers+")";
-  floatAwayText(data.joinedUser + " joined!", 60, display);
+  waitingText.text = 'Waiting for players... (' + data.noPlayers + ' / ' + data.maxPlayers+')';
+  floatAwayText(data.joinedUser + ' joined!', 60, display);
 }
 
 function setGameUser(user) {
@@ -150,7 +150,7 @@ function updateScore(data) {
   currentUser.score += data.score;
   currentScore.text = currentUser.score;
 
-  floatAwayText("+" + data.score, 50, currentScore);
+  floatAwayText('+' + data.score, 50, currentScore);
   // new TWEEN.Tween(currentScore.scale).to({
   //   x: 1 + Math.min(data.score / 100, 1),
   //   y: 1 + Math.min(data.score / 100, 1)
@@ -159,10 +159,10 @@ function updateScore(data) {
 
 function loadPlaceholders() {
   loader
-    .add("card", "images/card.png")
-    .add("blank_card", "images/back_card.png")
-    .add("avatar", "images/avatar-placeholder.png")
-    .add("background", "images/background.jpg")
+    .add('card', 'images/card.png')
+    .add('blank_card', 'images/back_card.png')
+    .add('avatar', 'images/avatar-placeholder.png')
+    .add('background', 'images/background.jpg')
     .load(setup);
 }
 
@@ -174,17 +174,17 @@ var card_w = 100,
 
 
 var score = new PIXI.Text(
-  "Score : ", {
-    font: "40px sans-serif",
-    fill: "white"
+  'Score : ', {
+    font: '40px sans-serif',
+    fill: 'white'
   }
 );
 
 var time = 30;
 var timer;
 var timeText = new PIXI.Text('00:00', {
-  font: "40px sans-serif",
-  fill: "white"
+  font: '40px sans-serif',
+  fill: 'white'
 });
 timeText.position.x = 50;
 timeText.position.y = 110;
@@ -208,23 +208,23 @@ function updateTime() {
 }
 
 function pad(time) {
-  var time_string = "";
+  var time_string = '';
   var seconds = time % 60;
   var minutes = parseInt(time / 60);
 
   if (seconds < 10) {
-    seconds = "0" + seconds;
+    seconds = '0' + seconds;
   }
 
   if (minutes < 10) {
-    minutes = "0" + minutes;
+    minutes = '0' + minutes;
   }
-  return minutes + " : " + seconds;
+  return minutes + ' : ' + seconds;
 }
 
 currentScore = new PIXI.Text('0', {
-  font: "40px sans-serif",
-  fill: "white"
+  font: '40px sans-serif',
+  fill: 'white'
 });
 
 score.addChild(currentScore);
@@ -239,13 +239,13 @@ stage.addChild(timeText);
 
 // var leaderboard = new Container();
 // var leader = new Text('', {
-//   font: "30px sans-serif",
-//   fill: "yellow"
+//   font: '30px sans-serif',
+//   fill: 'yellow'
 // });
 // var others = new Text('', {
-//   font: "20px sans-serif",
-//   fill: "white",
-//   align: "left",
+//   font: '20px sans-serif',
+//   fill: 'white',
+//   align: 'left',
 //   lineHeight: 25
 // });
 //
@@ -259,10 +259,10 @@ stage.addChild(timeText);
 
 
 function updateLeaderboard(players) {
-  // leader.text = players[0].name + ": " + players[0].score;
+  // leader.text = players[0].name + ': ' + players[0].score;
   // others.text = '';
   // for (var i = 1; i < players.length; i++) {
-  //   others.text += players[i].name + ": " + players[i].score + '\n';
+  //   others.text += players[i].name + ': ' + players[i].score + '\n';
   // }
   var highlight = true;
   table.leader = players[0];
@@ -276,7 +276,7 @@ function updateLeaderboard(players) {
 
       player.score.highlight.stop();
       if (diff > 0) {
-        floatAwayText("+" + diff, 30, player.score);
+        floatAwayText('+' + diff, 30, player.score);
         player.score.text = players[i].score;
       }
       if (i === 0 && highlight) {
@@ -335,11 +335,11 @@ function Card(position, movie, options, rotation) {
   poster.height = card_h * 0.7;
   poster.anchor.set(0.5, 0.5);
   if (movie.title.length > 15) {
-    movie.title = movie.title.substring(0, 12) + "...";
+    movie.title = movie.title.substring(0, 12) + '...';
   }
   var title = new PIXI.Text(movie.title, {
-    font: card_h * 0.08 +"px sans-serif",
-    fill: "black"
+    font: card_h * 0.08 +'px sans-serif',
+    fill: 'black'
   });
   title.anchor.set(0.5, 0.5);
   title.position.set(0, -title.height - poster.height * 0.5);
@@ -388,16 +388,16 @@ function Player(position, user, handSize) {
 
   var username = new Text(
     user.name, {
-      font: "20px sans-serif",
-      fill: "white"
+      font: '20px sans-serif',
+      fill: 'white'
     }
   );
   username.anchor.set(0.5, 0.5);
   username.position.set(0, -avatar.height * 0.4);
 
-  var score = new Text("0", {
-    font: "30px sans-serif",
-    fill: "white"
+  var score = new Text('0', {
+    font: '30px sans-serif',
+    fill: 'white'
   });
   score.anchor.set(0.5, 0.5);
   score.position.set(0, -avatar.height * 0.6);
@@ -622,8 +622,8 @@ function onDragStart(event) {
     this.origin = new PIXI.Point(this.position.x, this.position.y);
   }
   // highlightAndFade(this.background, Math.random(), 2);
-  // floatAwayText("+10",50,this);
-  // blowUpText("text: string",50,this);
+  // floatAwayText('+10',50,this);
+  // blowUpText('text: string',50,this);
   // highlightRainbow(this.background, 2);
 }
 
@@ -669,7 +669,7 @@ function isCardOnAvatar(card) {
     return (card.assignedTo = bin);
 
   }
-  console.log("blleeeeeh");
+  console.log('blleeeeeh');
   var players = table.children;
   table.children.some(function(player) {
     var avatar = player.children[0];
@@ -685,15 +685,15 @@ function isCardOnAvatar(card) {
 
 function onPlayerHover(player) {
   player.getChildAt(1).style = {
-    font: "20px sans-serif",
-    fill: "yellow"
+    font: '20px sans-serif',
+    fill: 'yellow'
   };
 }
 
 function onPlayerHoverOut(player) {
   player.getChildAt(1).style = {
-    font: "20px sans-serif",
-    fill: "white"
+    font: '20px sans-serif',
+    fill: 'white'
   };
 }
 
@@ -761,8 +761,8 @@ function placeOnPile(movies) {
     }, rotation);
     card.scale.set(0.0, 0.0);
     new TWEEN.Tween(card.scale).to({
-      x: "+1",
-      y: "+1"
+      x: '+1',
+      y: '+1'
     }, 500).easing(TWEEN.Easing.Bounce.Out).start();
     card.assignSound.play();
     pile.addChild(card);
@@ -813,13 +813,13 @@ function resume(player) {
 function gameOver() {
   clearInterval(timer);
   var gameOverText = new Text('Thanks for playing!', {
-    font: "100px sans-serif",
-    fill: "white"
+    font: '100px sans-serif',
+    fill: 'white'
   });
 
   var winner =  new Text(table.leader.name + ' wins!', {
-      font: "60px sans-serif",
-      fill: "yellow"
+      font: '60px sans-serif',
+      fill: 'yellow'
   });
 
   var fade = 1500;
@@ -847,9 +847,9 @@ function gameOver() {
 function blowUpText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
-    font: "bold "+size+"px sans-serif",
+    font: 'bold '+size+'px sans-serif',
     fill: hex,
-    align: "center"
+    align: 'center'
   });
   options = options || {};
   var delay = options.delay || 0;
@@ -884,7 +884,7 @@ function blowUpText(text, size, container, options) {
 function floatAwayText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
-    font: size+"px sans-serif",
+    font: size+'px sans-serif',
     fill: hex
   });
   options = options || {};
@@ -910,13 +910,13 @@ function floatAwayText(text, size, container, options) {
   }).start();
 
   new TWEEN.Tween(showText.position).to({
-    y: "-150"
+    y: '-150'
   }, 1000).delay(delay).start();
 }
 
 function componentToHex(c) {
   var hex = c.toString(16);
-  return hex == 1 ? "0" + hex : hex;
+  return hex == 1 ? '0' + hex : hex;
 }
 
 function highlightAndFade(sprite, hue, duration_s) {

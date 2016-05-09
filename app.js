@@ -1,4 +1,5 @@
 /*jshint esversion: 6 */
+var extend = require('util')._extend;
 var Datastore = require('nedb'),
     db = {}, autoCompact = 10 * 1000;
 
@@ -32,6 +33,7 @@ var pile = [];
 var playersFinished = 0;
 var timer;
 var time = 0;
+var maxTime = 3 * 60;
 var userMovies = [];
 var maxPlayers = 2;
 var recommendations = {};
@@ -43,6 +45,8 @@ var bin = {
   movieList: [],
   roundScore: 0
 };
+
+var deckSize = 60;
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
@@ -71,7 +75,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('shakeCard', shakeCard);
   gameSocket.on('addMovie', addMovie);
   gameSocket.on('removeMovie', removeMovie);
-
+  gameSocket.on('setConfig', setConfig);
 };
 
 
@@ -160,7 +164,7 @@ function playerConnect(currPlayer) {
     updateMovies(function () {
       gameId = Date.now();
       recommendations[gameId] = {};
-      var deck = createDeck(60);
+      var deck = createDeck(deckSize);
 
       io.sockets.emit('loadAssets', deck);
       // player.availableMovies = movies; //TODO wait fo people to join to serve movies
@@ -169,7 +173,7 @@ function playerConnect(currPlayer) {
 
       timer = setInterval(function() {
         time++;
-        if (time >= 3 * 60) {
+        if (time >= maxTime) {
           clearInterval(timer);
           gameOver();
         }
@@ -275,7 +279,7 @@ function checkBin(assignedBy, movie) {
     assignedBy.emit('updateScore', {
       score: score
     });
-    showInfo(player.username, "UNLUCKY!");
+    showInfo(player.username, 'UNLUCKY!');
     sendLeaderboard();
   }
   recommendation.playerId = assignedBy.username;
@@ -304,7 +308,7 @@ function updateScore(assignedTo, assignedBy, movie) {
     });
 
     if (player.streak > 0) {
-      showInfo(player.username, "STREAK x" + (player.streak + 1));
+      showInfo(player.username, 'STREAK x' + (player.streak + 1));
     }
     player.roundScore += score;
     player.score += score;
@@ -328,9 +332,9 @@ function updateScore(assignedTo, assignedBy, movie) {
         });
         if (collaborator.streak > 0) {
           showInfo(collaborator.username,
-            "STREAK x" + (collaborator.streak + 1) + "\nCOLLABORATOR");
+            'STREAK x' + (collaborator.streak + 1) + '\nCOLLABORATOR');
         } else {
-          showInfo(collaborator.username, "COLLABORATOR");
+          showInfo(collaborator.username, 'COLLABORATOR');
         }
 
         collaborator.streak += 1;
@@ -364,7 +368,7 @@ function roundFinished(userData) {
     score: score
   });
   if (userData.time > 0) {
-    showInfo(userData.username, "EARLY FINISH");
+    showInfo(userData.username, 'EARLY FINISH');
   }
   joinedPlayers[userData.username].score += score;
   joinedPlayers[userData.username].roundScore = 0;
@@ -481,16 +485,32 @@ function showInfo(player, info) {
 function storePlayerInfo(data) {
   data.timestamp = Date.now();
   var game = recommendations[gameId] || {};
-  var round_id = "round_" + roundNo;
+  var round_id = 'round_' + roundNo;
   game.gameId = gameId;
   game.players = game.players || players.map(function (player) {
+    // var data = extend({}, player);
+    // data.cards = data.cards.map(function (card) {
+    //   return card.id;
+    // });
+    // data.movieList = data.movieList.map(function (movie) {
+    //   return movie.id;
+    // });
+    // console.log(data);
     return player.username;
   });
   var round = game[round_id] || {};
-  round["match_" + data.timestamp] = data;
+  round['match_' + data.timestamp] = data;
   game[round_id] = round;
 
   db.recommendations.update( { gameId : game.gameId }, game, { upsert : true }, function (err) {
     if (err) throw err;
   });
+}
+
+
+function setConfig(data) {
+  console.log(data);
+  deckSize = data.deckSize || 60;
+  maxPlayers = data.maxPlayers || 2;
+  maxTime = data.maxTime || 3 * 60 ;
 }

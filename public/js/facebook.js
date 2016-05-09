@@ -2,15 +2,23 @@ var socket;
 var user;
 
 function statusChangeCallback(response) {
-  console.log('statusChangeCallback');
-  console.log(response);
   // The response object is returned with a status field that lets the
   // app know the current login status of the person.
   // Full docs on the response object can be found in the documentation
   // for FB.getLoginStatus().
   $('.navbar').show();
+  console.log(response);
   if (response.status === 'connected') {
     // Logged into your app and Facebook.
+    var button = $('#fb-btn');
+    button.html('Logout');
+    button.attr('onclick', 'logout();');
+    // button.unbind('click').click(function (e) {
+    //   console.log("Logging out...");
+    //   FB.logout(function (response) {
+    //     console.log(response);
+    //   });
+    // });
     socket = io.connect();
     socket.on('setUser', setUser);
     $('#main-screen').html($('#movies').html());
@@ -28,17 +36,6 @@ function statusChangeCallback(response) {
     document.getElementById('status').innerHTML = 'Please log ' +
       'into Facebook.';
   }
-}
-
-// This function is called when someone finishes with the Login
-// Button.  See the onlogin handler attached to it in the sample
-// code below.
-function checkLoginState() {
-  var r;
-  FB.getLoginStatus(function(response) {
-    r = response;
-  });
-  return r;
 }
 
 window.fbAsyncInit = function() {
@@ -74,21 +71,10 @@ window.fbAsyncInit = function() {
   if (d.getElementById(id)) return;
   js = d.createElement(s);
   js.id = id;
-  js.src = "//connect.facebook.net/en_US/sdk.js";
+  js.src = '//connect.facebook.net/en_US/sdk.js';
   fjs.parentNode.insertBefore(js, fjs);
 }(document, 'script', 'facebook-jssdk'));
 
-// Here we run a very simple test of the Graph API after login is
-// successful.  See statusChangeCallback() for when this call is made.
-function testAPI() {
-  console.log('Welcome!  Fetching your information.... ');
-  FB.api('/me/picture', function(response) {
-    console.log('Successful login for: ' + response.name);
-    document.getElementById('status').innerHTML =
-      'Thanks for logging in, ' + response.name + '!';
-    console.log(response);
-  });
-}
 
 function getUserInfo() {
   console.log('getting user info..');
@@ -104,5 +90,24 @@ function getUserInfo() {
 
 function setUser(user) {
   FB.me = user;
-  console.log(FB.me);
+}
+
+function login() {
+  FB.login(function (response) {
+    if (response.authResponse) {
+      statusChangeCallback({ status: 'connected' });
+    } else {
+      console.log('User cancelled login or did not fully authorize.');
+    }
+  });
+}
+
+function logout() {
+  console.log('Logging out...');
+  FB.logout(function (response) {
+    $('#main-screen').html('');
+    var button = $('#fb-btn');
+    button.html('Login with Facebook');
+    button.attr('onclick', 'login();');
+  });
 }
