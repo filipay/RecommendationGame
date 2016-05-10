@@ -432,6 +432,7 @@ function gameOver() {
   players = [];
   suggested = {};
   // movies = [];
+  roundNo = 0;
   pile = [];
   playersFinished = 0;
   clearInterval(timer);
@@ -449,10 +450,10 @@ function addMovie(movie, user) {
   db.movies.insert(movie, function (err) {
     if (err) {
       if (err.errorType != 'uniqueViolated') throw err;
-      else {
-        console.log(movie);
-        console.log(err);
-      }
+      // else {
+      //   console.log(movie);
+      //   console.log(err);
+      // }
     }
 
   });
@@ -488,7 +489,7 @@ function storePlayerInfo(data) {
   var round_id = 'round_' + roundNo;
   game.gameId = gameId;
   game.players = game.players || players.map(function (player) {
-    // var data = extend({}, player);
+    // var   data = extend({}, player);
     // data.cards = data.cards.map(function (card) {
     //   return card.id;
     // });
@@ -512,5 +513,5 @@ function setConfig(data) {
   console.log(data);
   deckSize = data.deckSize || 60;
   maxPlayers = data.maxPlayers || 2;
-  maxTime = data.maxTime || 3 * 60 ;
+  maxTime = data.maxTime * 60 || 3 * 60 ;
 }
