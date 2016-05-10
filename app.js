@@ -45,7 +45,7 @@ var bin = {
   movieList: [],
   roundScore: 0
 };
-
+var gameStarted = false;
 var deckSize = 60;
 
 function updateMovies(callback) {
@@ -160,7 +160,7 @@ function playerConnect(currPlayer) {
     players.push(currPlayer);
   }
   if (players.length === maxPlayers) {
-
+    gameStarted = true;
     updateMovies(function () {
       gameId = Date.now();
       recommendations[gameId] = {};
@@ -206,8 +206,13 @@ function playerDisconnect() {
   players.splice(players.indexOf(disconnected), 1);
 
   io.sockets.emit('playerJoined', players);
-  clearInterval(timer);
+  // clearInterval(timer);
   if (players.length === 0) gameOver();
+  if (!gameStarted) io.sockets.emit('updateWaitingScreen', {
+    joinedUser: '- ' + disconnected.name,
+    noPlayers: players.length,
+    maxPlayers: maxPlayers
+  });
 }
 
 
@@ -436,6 +441,7 @@ function gameOver() {
   pile = [];
   playersFinished = 0;
   clearInterval(timer);
+  gameStarted = false;
   timer = undefined;
   time = 0;
   userMovies = [];
