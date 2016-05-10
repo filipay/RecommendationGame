@@ -243,7 +243,7 @@ function cardAssigned(data) {
     updateScore(assignedPlayer, this, data.id);
     var chosen_movie = getMovie(data.id);
     pile.push(chosen_movie);
-    io.sockets.emit('placeOnPile', [chosen_movie]);
+    io.sockets.emit('placeOnPile', [chosen_movie]);//
   }
 }
 
