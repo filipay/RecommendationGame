@@ -40,10 +40,10 @@
       <!-- Collect the nav links, forms, and other content for toggling -->
       <div class="collapse navbar-collapse" id="navbar">
         <ul class="nav navbar-nav">
-          <li class="active"><a href="#">Your Movies</a></li>
-          <li><a href="#">Recommendations</a></li>
-          <li><a href="#">Config</a>
-          <li><a href="javascript:void(0)" onclick="runGame();">Play!</a></li>
+          <li id="nav-movies" class="active"><a href="javascript:void(0)" onclick="showMovies();">Your Movies</a></li>
+          <li id="nav-recom"><a href="javascript:void(0)" onclick="showRecommendations();">Recommendations</a></li>
+          <li id="nav-how-to"><a href="javascript:void(0)" onclick="showHowTo();">How to play!</a>
+          <li><a href="javascript:void(0)" onclick="showGame();">Play!</a></li>
 
         </ul>
         <ul class="nav navbar-btn navbar-right">
@@ -68,10 +68,12 @@
       <div class="row top-buffer">
         <div class="col-lg-1-12">
           <div class="col-sm-4">
+            Search movies to add to your list!
+
           </div>
           <div class="col-sm-4">
             <div class="input-group">
-              <input type="text" class="form-control" placeholder="Search" name="search" id="search">
+              <input type="text" class="form-control" placeholder="Search movies" name="search" id="search">
               <div class="input-group-btn">
                 <button class="btn btn-default" onclick="searchMovies();"><i class="glyphicon glyphicon-search"></i></button>
               </div>
@@ -87,7 +89,7 @@
             </ul>
           </div>
           <div class="col-md-8 ">
-            <div class="row">
+            <div class="row" id="result">
               <div class="col-md-3">
                 <img src=" " alt="" class="img-thumbnail" />
                 <button type="button" id="interact" class="btn btn-success btn-block">
@@ -119,6 +121,42 @@
     </div>
   </script>
 
+  <script type="text/template" id="how-to">
+    <div class="container">
+      <div class="col-lg-4">
+        <div class="row">
+          <ul class="list-group">
+            <li class="list-group-item">First add 20+ movies to your <u>movie list</u>! <b>It doesn't have to be the top 20 list! </b></li>
+            <li class="list-group-item">Click "Play!" and wait for your friends to join!</li>
+          </ul>
+        </div>
+        <div class="row">
+          <ul class="list-group">
+            <li class="list-group-item">Once in game start assigning cards to players you think might like the movie!</li>
+            <li class="list-group-item">You'll start seeing movies pop up on the table. These are the cards that have been assigned by the players and you!</li>
+            <li class="list-group-item">If a movie is highlighted in your hand that means someone just played that card!</li>
+          </ul>
+        </div>
+        <div class="row">
+          <li class="list-group-item"><b>Bin movies you think no one would enjoy</b>. Becareful though because <u>if they do like it and you binned it, you'll lose points</u></li>
+          <li class="list-group-item">You <b>get points</b> if YOU assign a card and the person has the movie in their "movie list"</li>
+          <li class="list-group-item">You <b>get MORE points</b> if you and another person <b>COLLABORATE</b> and agree that a person might like a movie! <b>This works retroactively and if you're first you get more points!<b></li>
+        </ul>
+        </div>
+      </div>
+      <div class="col-lg-1">
+
+      </div>
+      <div class="col-lg-7">
+        <div class="row">
+          <div style='position:relative;padding-bottom:calc(100% / 1.78)'><iframe src='https://gfycat.com/ifr/WatchfulLankyFreshwatereel' frameborder='0' scrolling='no' width='100%' height='100%' style='position:absolute;top:0;left:0;' allowfullscreen></iframe></div>
+        </div>
+      </div>
+
+
+    </div>
+
+  </script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/facebook.js"></script>
   <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->

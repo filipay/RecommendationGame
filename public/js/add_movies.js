@@ -5,9 +5,9 @@ var results = {};
 $('.navbar').hide();
 function prepareMovieSearch() {
   movie_div = $('.row.movies').clone();
-
-  $('.container.results').hide();
-
+  $('#result').hide();
+  $('.list-group.search-group').hide();
+  if (FB.me.movies) setUserMovies();
   $("#search").keyup(function(event) {
     if (event.keyCode === 13) {
       searchMovies();
@@ -84,11 +84,32 @@ function selected(event) {
 
 }
 
-function runGame() {
+function showGame() {
   $('.navbar.navbar-default').hide();
   $('#main-screen').html($('#game').html());
 }
 
+function showHowTo() {
+  $('#nav-how-to').prop('class','active');
+  $('#nav-recom').prop('class','inactive');
+  $('#nav-movies').prop('class','inactive');
+  $('#main-screen').html($('#how-to').html());
+}
+
+function showRecommendations() {
+  $('#nav-how-to').prop('class','inactive');
+  $('#nav-recom').prop('class','active');
+  $('#nav-movies').prop('class','inactive');
+}
+
+function showMovies() {
+  $('#nav-how-to').prop('class','inactive');
+  $('#nav-recom').prop('class','inactive');
+  $('#nav-movies').prop('class','active');
+  $('#main-screen').html($('#movies').html());
+  prepareMovieSearch();
+
+}
 
 function setUserMovies() {
   var listing = movie_div.find('.list-group-item.movie');

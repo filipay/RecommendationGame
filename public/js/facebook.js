@@ -90,6 +90,7 @@ function getUserInfo() {
 
 function setUser(user) {
   FB.me = user;
+  setUserMovies();
 }
 
 function login() {
