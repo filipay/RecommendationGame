@@ -3,16 +3,21 @@ var image_url = 'http://image.tmdb.org/t/p/w500';
 var placeholder = 'images/placeholder_poster.png';
 var results = {};
 $('.navbar').hide();
+
+
 function prepareMovieSearch() {
   movie_div = $('.row.movies').clone();
   $('#result').hide();
   $('.list-group.search-group').hide();
-  if (FB.me.movies) setUserMovies();
-  $("#search").keyup(function(event) {
+
+
+  $('#search').keypress(function (event) {
     if (event.keyCode === 13) {
       searchMovies();
     }
   });
+
+  if (FB.me.movies) setUserMovies();
 
   console.log("Prepare finished");
 }
