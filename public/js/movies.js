@@ -90,8 +90,13 @@ function selected(event) {
 }
 
 function showGame() {
-  $('.navbar.navbar-default').hide();
-  $('#main-screen').html($('#game').html());
+  if (FB.me.movies.length >= 20) {
+    $('.navbar.navbar-default').hide();
+    $('#main-screen').html($('#game').html());
+  } else {
+    alert("You need to have 20 movies or more to play the game!");
+  }
+
 }
 
 function showHowTo() {
