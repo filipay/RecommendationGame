@@ -78,6 +78,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('removeMovie', removeMovie);
   gameSocket.on('setConfig', setConfig);
   gameSocket.on('playerReady', playerReady);
+  gameSocket.on('rateMovies', rateMovies);
 };
 
 
@@ -520,4 +521,34 @@ function setConfig(data) {
   deckSize = data.deckSize || 60;
   maxPlayers = data.maxPlayers || 2;
   maxTime = data.maxTime * 60 || 6 * 60 ;
+}
+
+function rateMovies(playerId) {
+  var games = [];
+  var uniqueMovies = {};
+  db.recommendations.find({players: { $elemMatch: playerId}}, function (err, docs) {
+    games = docs;
+
+    games.forEach(function (game) {
+      var rounds = [];
+      Object.keys(game).forEach(function (key) {
+
+        if (/[round_][0-9]+/.test(key)) {
+          rounds.push(game[key]);
+        }
+      });
+      rounds.forEach(function (round) {
+        Object.keys(round).forEach(function (match) {
+          if (round[match].friendId === playerId) {
+            var movie = round[match].movieId;
+            uniqueMovies[movie] = uniqueMovies[movie] || [];
+            uniqueMovies[movie].push(round[match].playerId);
+          }
+        });
+      });
+    });
+    console.log(uniqueMovies);
+    console.log(Object.keys(uniqueMovies).length);
+  });
+
 }
