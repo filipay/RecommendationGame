@@ -65,7 +65,11 @@ function selected(event) {
   var movie = results[id];
 
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
-  $('.overview').html(movie.overview);
+  if (movie.overview.length > 300) {
+    $('.overview').html(movie.overview.substring(0, 300) + "...");
+  } else {
+    $('.overview').html(movie.overview);
+  }
   $('.img-thumbnail').prop('src', movie.poster_url);
 
 

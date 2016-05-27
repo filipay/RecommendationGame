@@ -122,7 +122,7 @@ function amountOfPlayers() {
 function getUser(user) {
   var socket = this;
   user.movies = [];
-  var post = {
+  var data = {
     facebook_id: user.id,
     name: user.name,
     picture: user.picture,
@@ -132,8 +132,8 @@ function getUser(user) {
   db.users.findOne({ facebook_id : user.id }, function (err, doc) {
     if (err) throw err;
     if (!doc || doc.length < 1) {
-      db.users.insert(post);
-      user = post;
+      db.users.insert(data);
+      user = data;
     } else {
       user = doc;
     }
