@@ -47,6 +47,7 @@ var bin = {
 };
 var gameStarted = false;
 var deckSize = 60;
+var readyPlayers = 0;
 
 function updateMovies(callback) {
   db.movies.find( {} , function (err, docs) {
@@ -76,6 +77,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('addMovie', addMovie);
   gameSocket.on('removeMovie', removeMovie);
   gameSocket.on('setConfig', setConfig);
+  gameSocket.on('playerReady', playerReady);
 };
 
 
@@ -168,17 +170,6 @@ function playerConnect(currPlayer) {
 
       io.sockets.emit('loadAssets', deck);
       // player.availableMovies = movies; //TODO wait fo people to join to serve movies
-
-      io.sockets.emit('startGame');
-
-      timer = setInterval(function() {
-        time++;
-        if (time >= maxTime) {
-          clearInterval(timer);
-          gameOver();
-        }
-      }, 1000);
-
     });
   } else {
     io.sockets.emit('updateWaitingScreen', {
@@ -445,6 +436,7 @@ function gameOver() {
   timer = undefined;
   time = 0;
   userMovies = [];
+  readyPlayers = 0;
 }
 
 function shakeCard(card) {
@@ -473,6 +465,22 @@ function removeMovie(movie, user) {
   });
 }
 
+
+function playerReady() {
+  readyPlayers++;
+  if (readyPlayers === maxPlayers) {
+    io.sockets.emit('startGame');
+
+    timer = setInterval(function() {
+      time++;
+      if (time >= maxTime) {
+        clearInterval(timer);
+        gameOver();
+      }
+    }, 1000);
+  }
+}
+
 function showInfo(player, info) {
   io.sockets.emit('showInfo', player, info);
 }
@@ -495,14 +503,6 @@ function storePlayerInfo(data) {
   var round_id = 'round_' + roundNo;
   game.gameId = gameId;
   game.players = game.players || players.map(function (player) {
-    // var   data = extend({}, player);
-    // data.cards = data.cards.map(function (card) {
-    //   return card.id;
-    // });
-    // data.movieList = data.movieList.map(function (movie) {
-    //   return movie.id;
-    // });
-    // console.log(data);
     return player.username;
   });
   var round = game[round_id] || {};
@@ -519,5 +519,5 @@ function setConfig(data) {
   console.log(data);
   deckSize = data.deckSize || 60;
   maxPlayers = data.maxPlayers || 2;
-  maxTime = data.maxTime * 60 || 3 * 60 ;
+  maxTime = data.maxTime * 60 || 6 * 60 ;
 }

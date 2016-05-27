@@ -477,7 +477,7 @@ function createHand(movies, position, options, rotation) {
 
 var table = new Container();
 
-function createTable(players) {
+function createTable(players, callback) {
   stage.removeChild(table);
   table = new Container();
   var angle_step = players.length > 2 ? -Math.PI / players.length : -Math.PI * 0.5; //-Math.PI * 0.5;
@@ -507,7 +507,7 @@ function createTable(players) {
     }
   });
   stage.addChildAt(table, 2);
-
+  socket.emit('playerReady');
 }
 var pile = new Container();
 
