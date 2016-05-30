@@ -5,7 +5,7 @@ var Datastore = require('nedb'),
 
 db.users = new Datastore({filename: 'db/users.db', autoload: true });
 db.movies = new Datastore({filename: 'db/movies.db', autoload: true });
-db.recommendations = new Datastore({filename: 'db/recommendations.db', autoload: true });
+db.games = new Datastore({filename: 'db/games.db', autoload: true });
 
 db.users.ensureIndex({ fieldName: 'facebook_id', unique: true}, function (err) {
   if (err) throw err;
@@ -15,13 +15,13 @@ db.movies.ensureIndex( {fieldName: 'id', unique: true}, function (err) {
   if (err) throw err;
 });
 
-db.recommendations.ensureIndex( {fieldName: 'gameId', unique: true}, function (err) {
+db.games.ensureIndex( {fieldName: 'gameId', unique: true}, function (err) {
   if (err) throw err;
 });
 
 db.users.persistence.setAutocompactionInterval(autoCompact);
 db.movies.persistence.setAutocompactionInterval(autoCompact);
-db.recommendations.persistence.setAutocompactionInterval(autoCompact);
+db.games.persistence.setAutocompactionInterval(autoCompact);
 
 var io;
 var gameSocket;
@@ -510,7 +510,7 @@ function storePlayerInfo(data) {
   round['match_' + data.timestamp] = data;
   game[round_id] = round;
 
-  db.recommendations.update( { gameId : game.gameId }, game, { upsert : true }, function (err) {
+  db.games.update( { gameId : game.gameId }, game, { upsert : true }, function (err) {
     if (err) throw err;
   });
 }
@@ -527,7 +527,7 @@ function rateMovies(playerId) {
   var games = [];
   var uniqueMovies = {};
   var possibleMovies = {};
-  db.recommendations.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
+  db.games.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
     games = docs;
 
     games.forEach(function (game) {
