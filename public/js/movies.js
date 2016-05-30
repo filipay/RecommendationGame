@@ -6,7 +6,7 @@ $('.navbar').hide();
 
 
 function prepareMovieSearch() {
-  movie_div = $('.row.movies').clone();
+  movie_div = $('.container.results').find('.row.movies').clone();
   $('#result').hide();
   $('.list-group.search-group').hide();
 
@@ -20,6 +20,36 @@ function prepareMovieSearch() {
   if (FB.me.movies) setUserMovies();
 
   console.log("Prepare finished");
+}
+
+function prepareRecommendations(movieList) {
+  var recommend = $('.container.rec-results').clone();
+  var listing = recommend.find('.list-group-item.rec');
+
+  $('.list-group.rec-group').html('');
+
+    if (movieList.length > 0) {
+      // console.log(movies.Search);
+      results = {};
+      movieList.forEach(function(movie) {
+
+        results[movie.id] = movie;
+        results[movie.id].poster_url = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
+        var new_listing = listing.clone();
+        new_listing.html(movie.title);
+        new_listing.attr('data-movieid', movie.id);
+
+        $('.list-group.rec-group').append(new_listing);
+
+      });
+      var movie = movieList[0];
+
+      selectedRecommendation({
+        id: movie.id
+      });
+    }
+
+
 }
 
 function searchMovies() {
@@ -49,7 +79,7 @@ function searchMovies() {
       });
       var movie = movies.results[0];
 
-      selected({
+      selectedMovie({
         id: movie.id
       });
     }
@@ -58,8 +88,33 @@ function searchMovies() {
   });
 }
 
-function selected(event) {
 
+function selectedRecommendation(event) {
+  var id = event.id || parseInt($(event.target).attr('data-movieid'));
+  var movie = results[id];
+  console.log("recommendations: " + id);
+
+  $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
+  if (movie.overview.length > 300) {
+    $('.overview').html(movie.overview.substring(0, 300) + "...");
+  } else {
+    $('.overview').html(movie.overview);
+  }
+  $('.img-thumbnail').prop('src', movie.poster_url);
+
+  $('#like').off('click').click(function (e) {
+    $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
+    selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
+  });
+  $('#dislike').off('click').click(function (e) {
+    $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
+    selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
+
+  });
+
+}
+function selectedMovie(event) {
+  console.log("movies");
   var id = event.id || parseInt($(event.target).attr('data-movieid'));
   console.log(id);
   var movie = results[id];
@@ -114,13 +169,16 @@ function showRecommendations() {
   $('#nav-how-to').prop('class','inactive');
   $('#nav-recom').prop('class','active');
   $('#nav-movies').prop('class','inactive');
+  $('#main-screen').html($('#recommendations').html());
+  socket.emit('fetchRecommendations', FB.me.facebook_id);
+
 }
 
 function showMovies() {
   $('#nav-how-to').prop('class','inactive');
   $('#nav-recom').prop('class','inactive');
   $('#nav-movies').prop('class','active');
-  $('#main-screen').html($('#movies').html());
+  $('#main-screen').html($('#search-movies').html());
   prepareMovieSearch();
 
 }
@@ -141,7 +199,6 @@ function setUserMovies() {
 
   for (var i = 0; i < FB.me.movies.length; i++) {
     var movie = FB.me.movies[i];
-    console.log(movie);
     var new_listing = listing.clone();
     new_listing.prepend((i + 1) + '. ' + movie.title);
     new_listing.attr('data-movieid', movie.id);

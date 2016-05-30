@@ -78,7 +78,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('removeMovie', removeMovie);
   gameSocket.on('setConfig', setConfig);
   gameSocket.on('playerReady', playerReady);
-  gameSocket.on('rateMovies', rateMovies);
+  gameSocket.on('fetchRecommendations', fetchRecommendations);
 };
 
 
@@ -523,7 +523,8 @@ function setConfig(data) {
   maxTime = data.maxTime * 60 || 6 * 60 ;
 }
 
-function rateMovies(playerId) {
+function fetchRecommendations(playerId) {
+  var socket = this;
   var games = [];
   var uniqueMovies = {};
   var possibleMovies = {};
@@ -549,11 +550,26 @@ function rateMovies(playerId) {
         });
       });
     });
-    console.log(uniqueMovies);
-    console.log(Object.keys(uniqueMovies).length);
-    console.log(Object.keys(possibleMovies).length);
+
+    var list = [];
+    var uniqueKeys = Object.keys(uniqueMovies);
+    var possibleKeys = Object.keys(possibleMovies);
+
+
+    uniqueKeys.forEach(function (movie) {
+      db.movies.findOne({id : parseInt(movie)}, function (err, doc) {
+        list.push(doc);
+        if (movie === uniqueKeys[uniqueKeys.length - 1]) {
+          socket.emit('recList', list);
+        }
+      });
+    });
+    // console.log(uniqueMovies);
+    // console.log(Object.keys(uniqueMovies).length);
+    // console.log(Object.keys(possibleMovies).length);
   });
 
 }
 
-rateMovies('1039864286077777');
+
+// fetchRecommendations('1039864286077777');

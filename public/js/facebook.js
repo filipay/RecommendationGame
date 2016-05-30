@@ -21,7 +21,9 @@ function statusChangeCallback(response) {
     // });
     socket = io.connect();
     socket.on('setUser', setUser);
-    $('#main-screen').html($('#movies').html());
+    socket.on('recList', prepareRecommendations);
+    
+    $('#main-screen').html($('#search-movies').html());
     getUserInfo();
     prepareMovieSearch();
     // console.log('connected!!!');
