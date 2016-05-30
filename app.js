@@ -526,7 +526,8 @@ function setConfig(data) {
 function rateMovies(playerId) {
   var games = [];
   var uniqueMovies = {};
-  db.recommendations.find({players: { $elemMatch: playerId}}, function (err, docs) {
+  var possibleMovies = {};
+  db.recommendations.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
     games = docs;
 
     games.forEach(function (game) {
@@ -539,16 +540,20 @@ function rateMovies(playerId) {
       });
       rounds.forEach(function (round) {
         Object.keys(round).forEach(function (match) {
+          var movie = round[match].movieId;
           if (round[match].friendId === playerId) {
-            var movie = round[match].movieId;
             uniqueMovies[movie] = uniqueMovies[movie] || [];
             uniqueMovies[movie].push(round[match].playerId);
           }
+          possibleMovies[movie] = true;
         });
       });
     });
     console.log(uniqueMovies);
     console.log(Object.keys(uniqueMovies).length);
+    console.log(Object.keys(possibleMovies).length);
   });
 
 }
+
+rateMovies('1039864286077777');
