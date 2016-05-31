@@ -80,6 +80,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('setConfig', setConfig);
   gameSocket.on('playerReady', playerReady);
   gameSocket.on('fetchRecommendations', fetchRecommendations);
+  gameSocket.on('updateRating', updateRating);
 };
 
 
@@ -455,8 +456,8 @@ function addMovie(movie, user) {
   });
 }
 
-function updateRating(data) {
-  db.users.update({facebook_id: user}, { $addToSet: { rated_movies: recommendation}}, { upsert : true });
+function updateRating(user, data) {
+  db.users.update({facebook_id: user}, { $addToSet: { rated: data}}, { upsert : true });
 }
 
 function removeMovie(movie, user) {
@@ -554,11 +555,13 @@ function fetchRecommendations(playerId) {
     var uniqueKeys = Object.keys(uniqueMovies);
     var possibleKeys = Object.keys(possibleMovies);
 
-    db.users.findOne({facebook_id: playerId}, function (err, doc) {
+    db.users.findOne({facebook_id: playerId}, function (err, user) {
       uniqueKeys.forEach(function (movie) {
-        db.movies.findOne({id : parseInt(movie)}, function (err, doc) {
-          if (!doc.rated.some(function (rated) {
-            return rated.movieId === movie;
+        var movie_i = parseInt(movie);
+        db.movies.findOne({id : movie_i}, function (err, doc) {
+
+          if (!user.rated || !user.rated.some(function (rated) {
+            return rated.movieId === movie_i;
           })) {
             list.push(doc);
           }

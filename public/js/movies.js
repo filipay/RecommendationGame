@@ -28,28 +28,25 @@ function prepareRecommendations(movieList) {
 
   $('.list-group.rec-group').html('');
 
-    if (movieList.length > 0) {
-      // console.log(movies.Search);
-      results = {};
-      movieList.forEach(function(movie) {
-
+  if (movieList.length > 0) {
+    // console.log(movies.Search);
+    results = {};
+    movieList.forEach(function(movie) {
+      if (movie) {
         results[movie.id] = movie;
         results[movie.id].poster_url = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
         var new_listing = listing.clone();
         new_listing.html(movie.title);
         new_listing.attr('data-movieid', movie.id);
-
         $('.list-group.rec-group').append(new_listing);
+      }
+    });
+    var movie = movieList[0];
 
-      });
-      var movie = movieList[0];
-
-      selectedRecommendation({
-        id: movie.id
-      });
-    }
-
-
+    selectedRecommendation({
+      id: movie.id
+    });
+  }
 }
 
 function searchMovies() {
@@ -107,7 +104,7 @@ function selectedRecommendation(event) {
     $('select').prop('selectedIndex',0);
     $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
     selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
-    // socket.emit('updateRating', FB.me.facebook_id, rating);
+    socket.emit('updateRating', FB.me.facebook_id, rating);
   });
 
 
