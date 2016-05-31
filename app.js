@@ -512,13 +512,13 @@ function setConfig(data) {
   maxTime = data.maxTime * 60 || 6 * 60 ;
 }
 
-function fetchRecommendations(playerId) {
-  var socket = this;
-  var games = [];
-  var uniqueMovies = {};
-  var possibleMovies = {};
+
+function fetchGameData(playerId, callback) {
+
   db.games.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
-    games = docs;
+    var uniqueMovies = {};
+    var possibleMovies = {};
+    var games = docs;
 
     games.forEach(function (game) {
       var rounds = [];
@@ -531,33 +531,47 @@ function fetchRecommendations(playerId) {
       rounds.forEach(function (round) {
         Object.keys(round).forEach(function (match) {
           var movie = round[match].movieId;
+          if (uniqueMovies.known === undefined) uniqueMovies.known = round[match].known;
           if (round[match].friendId === playerId) {
             uniqueMovies[movie] = uniqueMovies[movie] || [];
             uniqueMovies[movie].push(round[match].playerId);
+
           }
           possibleMovies[movie] = true;
         });
       });
     });
 
-    var list = [];
-    var uniqueKeys = Object.keys(uniqueMovies);
-    var possibleKeys = Object.keys(possibleMovies);
-
-
-    uniqueKeys.forEach(function (movie) {
-      db.movies.findOne({id : parseInt(movie)}, function (err, doc) {
-        list.push(doc);
-        if (movie === uniqueKeys[uniqueKeys.length - 1]) {
-          socket.emit('recList', list);
-        }
-      });
-    });
-
+    callback(uniqueMovies, possibleMovies);
   });
 
 }
 
+function fetchRecommendations(playerId) {
+  var socket = this;
+  fetchGameData(playerId, function (uniqueMovies, possibleMovies) {
+    var list = [];
+    var uniqueKeys = Object.keys(uniqueMovies);
+    var possibleKeys = Object.keys(possibleMovies);
+
+    db.users.findOne({facebook_id: playerId}, function (err, doc) {
+      uniqueKeys.forEach(function (movie) {
+        db.movies.findOne({id : parseInt(movie)}, function (err, doc) {
+          if (!doc.rated.some(function (rated) {
+            return rated.movieId === movie;
+          })) {
+            list.push(doc);
+          }
+          if (movie === uniqueKeys[uniqueKeys.length - 1]) {
+              socket.emit('recList', list);
+          }
+
+        });
+      });
+    });
+  });
+
+}
 
 // updateRating('963545110359760', 11, 4);
 // fetchRecommendations('1039864286077777');
