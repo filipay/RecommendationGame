@@ -89,7 +89,7 @@ function searchMovies() {
 function selectedRecommendation(event) {
   var id = parseInt(event.id) || parseInt($(event.target).attr('data-movieid'));
   var movie = results[id];
-
+  console.log(id);
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
 
   $('.overview').html(movie.overview);
@@ -103,7 +103,9 @@ function selectedRecommendation(event) {
     };
     $('select').prop('selectedIndex',0);
     $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
-    selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
+    if ($('.list-group-item').first().html()) {
+      selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
+    }
     socket.emit('updateRating', FB.me.facebook_id, rating);
   });
 
