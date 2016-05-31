@@ -90,27 +90,26 @@ function searchMovies() {
 
 
 function selectedRecommendation(event) {
-  var id = event.id || parseInt($(event.target).attr('data-movieid'));
+  var id = parseInt(event.id) || parseInt($(event.target).attr('data-movieid'));
   var movie = results[id];
-  console.log("recommendations: " + id);
 
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
-  if (movie.overview.length > 300) {
-    $('.overview').html(movie.overview.substring(0, 300) + "...");
-  } else {
-    $('.overview').html(movie.overview);
-  }
+
+  $('.overview').html(movie.overview);
+
   $('.img-thumbnail').prop('src', movie.poster_url);
 
-  $('#like').off('click').click(function (e) {
+  $('#submit-sel').off('click').on('click', function () {
+    var rating = {
+      movieId: id,
+      rating: parseInt($('select option:selected').html().substr(0,1))
+    };
+    $('select').prop('selectedIndex',0);
     $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
     selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
+    // socket.emit('updateRating', FB.me.facebook_id, rating);
   });
-  $('#dislike').off('click').click(function (e) {
-    $('.list-group.rec-group').find('[data-movieid='+ id +']').remove();
-    selectedRecommendation({id: $('.list-group-item').first().attr('data-movieid')});
 
-  });
 
 }
 function selectedMovie(event) {

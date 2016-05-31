@@ -7,6 +7,7 @@ db.users = new Datastore({filename: 'db/users.db', autoload: true });
 db.movies = new Datastore({filename: 'db/movies.db', autoload: true });
 db.games = new Datastore({filename: 'db/games.db', autoload: true });
 
+
 db.users.ensureIndex({ fieldName: 'facebook_id', unique: true}, function (err) {
   if (err) throw err;
 });
@@ -449,13 +450,13 @@ function addMovie(movie, user) {
   db.movies.insert(movie, function (err) {
     if (err) {
       if (err.errorType != 'uniqueViolated') throw err;
-      // else {
-      //   console.log(movie);
-      //   console.log(err);
-      // }
     }
 
   });
+}
+
+function updateRating(data) {
+  db.users.update({facebook_id: user}, { $addToSet: { rated_movies: recommendation}}, { upsert : true });
 }
 
 function removeMovie(movie, user) {
@@ -465,7 +466,6 @@ function removeMovie(movie, user) {
     console.log(aff);
   });
 }
-
 
 function playerReady() {
   readyPlayers++;
@@ -487,17 +487,6 @@ function showInfo(player, info) {
 }
 
 
-// 1. The player id
-// 2. The friend id
-// 3. The movie id
-// 4. The game id
-// 5. The game round id
-// 6. The player ids of the other players
-// 7. The timestamp
-// 8. The order of the match in that round.
-// 9. The current score of the player at the time of the match.
-// 10. Type of match (known vs unknown)
-//TODO this
 function storePlayerInfo(data) {
   data.timestamp = Date.now();
   var game = recommendations[gameId] || {};
@@ -564,12 +553,11 @@ function fetchRecommendations(playerId) {
         }
       });
     });
-    // console.log(uniqueMovies);
-    // console.log(Object.keys(uniqueMovies).length);
-    // console.log(Object.keys(possibleMovies).length);
+
   });
 
 }
 
 
+// updateRating('963545110359760', 11, 4);
 // fetchRecommendations('1039864286077777');

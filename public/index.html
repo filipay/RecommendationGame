@@ -167,12 +167,25 @@
           <div class="row" id="result">
             <div class="col-md-3">
               <img src=" " alt="" class="img-thumbnail" />
-              <button type="button" id="like" class="btn btn-success btn-block">
+              <div class="form-group">
+                <label for="sel1">Rating:</label>
+                <select class="form-control" id="sel1">
+                  <option>5 &#8210; I definitely would watch this.</option>
+                  <option>4 &#8210; I would watch or have watched this movie.</option>
+                  <option>3 &#8210; I might watch it.</option>
+                  <option>2 &#8210; I doubt I would watch this.</option>
+                  <option>1 &#8210; I would definitely not watch this.</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-success btn-block" id="submit-sel">
+                Submit
+              </button>
+              <!-- <button type="button" id="like" class="btn btn-success btn-block">
                 Like
               </button>
               <button type="button" id="dislike" class="btn btn-danger btn-block">
                 Dislike
-              </button>
+              </button> -->
             </div>
             <div class="col-md-5">
               <h1 class="title-poster"></h1><big class="overview"></big>
