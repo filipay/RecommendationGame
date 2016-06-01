@@ -517,7 +517,7 @@ function setConfig(data) {
 function fetchGameData(playerId, callback) {
 
   db.games.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
-    var uniqueMovies = {};
+    var assignedMovies = {};
     var possibleMovies = {};
     var games = docs;
 
@@ -532,10 +532,10 @@ function fetchGameData(playerId, callback) {
       rounds.forEach(function (round) {
         Object.keys(round).forEach(function (match) {
           var movie = round[match].movieId;
-          if (uniqueMovies.known === undefined) uniqueMovies.known = round[match].known;
+          if (assignedMovies.known === undefined) assignedMovies.known = round[match].known;
           if (round[match].friendId === playerId) {
-            uniqueMovies[movie] = uniqueMovies[movie] || [];
-            uniqueMovies[movie].push(round[match].playerId);
+            assignedMovies[movie] = assignedMovies[movie] || [];
+            assignedMovies[movie].push(round[match].playerId);
 
           }
           possibleMovies[movie] = true;
@@ -543,16 +543,16 @@ function fetchGameData(playerId, callback) {
       });
     });
 
-    callback(uniqueMovies, possibleMovies);
+    callback(assignedMovies, possibleMovies);
   });
 
 }
 
 function fetchRecommendations(playerId) {
   var socket = this;
-  fetchGameData(playerId, function (uniqueMovies, possibleMovies) {
+  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
     var list = [];
-    var uniqueKeys = Object.keys(uniqueMovies);
+    var uniqueKeys = Object.keys(assignedMovies);
     var possibleKeys = Object.keys(possibleMovies);
 
     db.users.findOne({facebook_id: playerId}, function (err, user) {
@@ -575,18 +575,32 @@ function fetchRecommendations(playerId) {
   });
 
 }
+//based on if card was assigned or not
+function score_0(playerId) {
+  var best_movies = [];
+  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+    //All these movies have a score of 1 since they were assigned
+    var uniqueKeys = Object.keys(assignedMovies);
+    best_movies = uniqueKeys.slice(0,5);
+  });
 
-function scoreBasedOnRandom() {
-
+  return best_movies;
 }
 
-function scoreBasedOnCollab() {
+function score_1(playerId) {
+  var best_movies = [];
+  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+    var uniqueKeys = Object.keys(assignedMovies);
 
+  });
 }
 
-function scoreBasedOnKnown() {
+function score_2(playerId) {
+  var best_movies = [];
+  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
 
+  });
 }
 
 // updateRating('963545110359760', 11, 4);
-// fetchRecommendations('1039864286077777');
+fetchRecommendations('883367995105144');
