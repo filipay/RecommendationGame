@@ -565,7 +565,7 @@ function fetchRecommendations(playerId) {
           })) {
             list.push(doc);
           }
-          if (movie === possibleKeys[uniqueKeys.length - 1]) {
+          if (movie === possibleKeys[possibleKeys.length - 1]) {
               socket.emit('recList', list);
           }
 
@@ -603,4 +603,4 @@ function score_2(playerId) {
 }
 
 // updateRating('963545110359760', 11, 4);
-fetchRecommendations('883367995105144');
+// fetchRecommendations('883367995105144');
