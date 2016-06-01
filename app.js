@@ -520,6 +520,7 @@ function fetchGameData(playerId, callback) {
     var assignedMovies = {};
     var possibleMovies = {};
     var games = docs;
+    var friendliness = {};
 
     games.forEach(function (game) {
       var rounds = [];
@@ -532,21 +533,30 @@ function fetchGameData(playerId, callback) {
       rounds.forEach(function (round) {
         var order = {};
         Object.keys(round).forEach(function (match) {
-          order[round.playerId] = order[round.playerId] || 0;
-          order[round.playerId]++;
+          order[round[match].playerId] = order[round[match].playerId] || 0;
+          order[round[match].playerId]++;
+
+
           var movie = round[match].movieId;
           if (round[match].friendId === playerId) {
+
+
+            friendliness[round[match].playerId] = friendliness[round[match].playerId] || 0;
             assignedMovies[movie] = assignedMovies[movie] || {};
 
             if (assignedMovies[movie].known === undefined) assignedMovies[movie].known = round[match].known;
 
-            assignedMovies[movie].collabs = assignedMovies[movie].collabs || {};
-            assignedMovies[movie].collabs[round[match].playerId] = assignedMovies[movie].collabs[round[match].playerId] || [];
-            assignedMovies[movie].collabs[round[match].playerId].push(order[round.playerId]);
+            if (round[match].known) friendliness[round[match].playerId] += 1;
 
-            assignedMovies[movie] = assignedMovies[movie] || {};
+
+            assignedMovies[movie].collabs = assignedMovies[movie].collabs || [];
+            assignedMovies[movie].collabs.push(round[match].playerId);
+
             assignedMovies[movie].assigned = assignedMovies[movie].assigned || 0;
             assignedMovies[movie].assigned++;
+
+            assignedMovies[movie].orders = assignedMovies[movie].orders || [];
+            assignedMovies[movie].orders.push(order[round[match].playerId]);
 
           }
           possibleMovies[movie] = possibleMovies[movie] || {};
@@ -556,7 +566,7 @@ function fetchGameData(playerId, callback) {
       });
     });
 
-    callback(assignedMovies, possibleMovies);
+    callback(assignedMovies, possibleMovies, friendliness);
   });
 
 }
@@ -579,8 +589,8 @@ function fetchRecommendations(playerId) {
             list.push(doc);
           }
           if (movie === possibleKeys[possibleKeys.length - 1]) {
-              // socket.emit('recList', list);
-              console.log(list);
+              socket.emit('recList', list);
+              // console.log(list);
           }
 
         });
@@ -629,7 +639,7 @@ function score_2(playerId) {
   fetchGameData(playerId, function (assignedMovies, possibleMovies) {
     var list = [];
     var movies = Object.keys(assignedMovies);
-    console.log(assignedMovies);
+
     movies.forEach(function (movie) {
       list.push({
         movieId: movie,
@@ -649,11 +659,62 @@ function score_2(playerId) {
 
 function score_3(playerId) {
   var best_movies = [];
+  var calcAvgOrder = function (orders) {
+    var sum = 0;
+    orders.forEach(function (order) {
+      sum += 6 - order;
+    });
+    return orders.length > 1 ? sum / orders.length : 0;
+  };
   fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+    var list = [];
+    var movies = Object.keys(assignedMovies);
+    // console.log(assignedMovies);
+    movies.forEach(function (movie) {
+      list.push({
+        movieId: movie,
+        score: calcAvgOrder(assignedMovies[movie].orders)
+      });
+    });
 
+    list.sort(function (movie1, movie2) {
+      return movie2.score - movie1.score;
+    });
+
+    best_movies = list.slice(0,5);
+    console.log(best_movies);
   });
 }
 
-// console.log(score_1('963545110359760'));
+function score_4(playerId) {
+  var best_movies = [];
+  var calcScoreFromCollab = function (collabs, friendliness) {
+    var sum = 0;
+    collabs.forEach(function (c) {
+      sum += friendliness[c];
+    });
+    return sum;//collabs.length > 1 ? sum / collabs.length : 0;
+  };
+  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
+    var list = [];
+    var movies = Object.keys(assignedMovies);
+    // console.log(assignedMovies);
+    movies.forEach(function (movie) {
+      list.push({
+        movieId: movie,
+        score: calcAvgScoreFromCollab(assignedMovies[movie].collabs, friendliness)
+      });
+    });
+
+    list.sort(function (movie1, movie2) {
+      return movie2.score - movie1.score;
+    });
+
+    best_movies = list.slice(0,5);
+    console.log(best_movies);
+  });
+}
+
+// console.log(score_4('963545110359760'));
 // updateRating('963545110359760', 11, 4);
 // fetchRecommendations('883367995105144');
