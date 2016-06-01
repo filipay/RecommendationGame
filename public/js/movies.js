@@ -23,29 +23,31 @@ function prepareMovieSearch() {
 }
 
 function prepareRecommendations(movieList) {
-  var recommend = $('.container.rec-results').clone();
-  var listing = recommend.find('.list-group-item.rec');
-
-  $('.list-group.rec-group').html('');
-
   if (movieList.length > 0) {
-    // console.log(movies.Search);
-    results = {};
-    movieList.forEach(function(movie) {
-      if (movie) {
-        results[movie.id] = movie;
-        results[movie.id].poster_url = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
-        var new_listing = listing.clone();
-        new_listing.html(movie.title);
-        new_listing.attr('data-movieid', movie.id);
-        $('.list-group.rec-group').append(new_listing);
-      }
-    });
-    var movie = movieList[0];
+    var recommend = $('.container.rec-results').clone();
+    var listing = recommend.find('.list-group-item.rec');
 
-    selectedRecommendation({
-      id: movie.id
-    });
+    $('.list-group.rec-group').html('');
+
+    if (movieList.length > 0) {
+      // console.log(movies.Search);
+      results = {};
+      movieList.forEach(function(movie) {
+        if (movie) {
+          results[movie.id] = movie;
+          results[movie.id].poster_url = movie.poster_path === null ? placeholder : image_url + movie.poster_path;
+          var new_listing = listing.clone();
+          new_listing.html(movie.title);
+          new_listing.attr('data-movieid', movie.id);
+          $('.list-group.rec-group').append(new_listing);
+        }
+      });
+      var movie = movieList[0];
+
+      selectedRecommendation({
+        id: movie.id
+      });
+    }
   }
 }
 

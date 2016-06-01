@@ -556,7 +556,7 @@ function fetchRecommendations(playerId) {
     var possibleKeys = Object.keys(possibleMovies);
 
     db.users.findOne({facebook_id: playerId}, function (err, user) {
-      uniqueKeys.forEach(function (movie) {
+      possibleKeys.forEach(function (movie) {
         var movie_i = parseInt(movie);
         db.movies.findOne({id : movie_i}, function (err, doc) {
 
@@ -565,7 +565,7 @@ function fetchRecommendations(playerId) {
           })) {
             list.push(doc);
           }
-          if (movie === uniqueKeys[uniqueKeys.length - 1]) {
+          if (movie === possibleKeys[uniqueKeys.length - 1]) {
               socket.emit('recList', list);
           }
 
@@ -573,6 +573,18 @@ function fetchRecommendations(playerId) {
       });
     });
   });
+
+}
+
+function scoreBasedOnRandom() {
+
+}
+
+function scoreBasedOnCollab() {
+
+}
+
+function scoreBasedOnKnown() {
 
 }
 
