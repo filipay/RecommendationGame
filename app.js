@@ -541,12 +541,16 @@ function fetchGameData(playerId, callback) {
           if (round[match].friendId === playerId) {
 
 
-            friendliness[round[match].playerId] = friendliness[round[match].playerId] || 0;
+            friendliness[round[match].playerId] = friendliness[round[match].playerId] || {};
+            friendliness[round[match].playerId].total = friendliness[round[match].playerId].total || 0;
+            friendliness[round[match].playerId].correct = friendliness[round[match].playerId].correct || 0;
+
             assignedMovies[movie] = assignedMovies[movie] || {};
 
             if (assignedMovies[movie].known === undefined) assignedMovies[movie].known = round[match].known;
 
-            if (round[match].known) friendliness[round[match].playerId] += 1;
+            if (round[match].known) friendliness[round[match].playerId].correct++;
+            friendliness[round[match].playerId].total++;
 
 
             assignedMovies[movie].collabs = assignedMovies[movie].collabs || {};
@@ -564,7 +568,9 @@ function fetchGameData(playerId, callback) {
         });
       });
     });
-
+    friendliness.ratio = function (playerId) {
+      return this[playerId].correct / this[playerId].total;
+    };
     callback(assignedMovies, possibleMovies, friendliness);
   });
 
@@ -657,7 +663,7 @@ function score_2(playerId) {
 }
 
 //Score based on amount assigned / amount appeared with threshold taken into consideration
-function score_2_1(playerId) {
+function score_2_1(playerId, threshold) {
   var best_movies = [];
   fetchGameData(playerId, function (assignedMovies, possibleMovies) {
     var list = [];
@@ -666,7 +672,7 @@ function score_2_1(playerId) {
     movies.forEach(function (movie) {
       list.push({
         movieId: movie,
-        score: possibleMovies[movie].appeared > 2 ? assignedMovies[movie].assigned  / possibleMovies[movie].appeared : 0
+        score: possibleMovies[movie].appeared >= threshold ? assignedMovies[movie].assigned  / possibleMovies[movie].appeared : 0
       });
     });
 
@@ -680,19 +686,18 @@ function score_2_1(playerId) {
 }
 
 
-//Score based on order
+//Avg score based on order
 function score_3(playerId) {
   var best_movies = [];
-  var calcAvgOrder = function (collaborators) {
-    var sum = 0, count = 0;
+  var calcSumOrder = function (collaborators) {
+    var sum = 0;
     var collabs = Object.keys(collaborators);
     collabs.forEach(function (collab) {
       collaborators[collab].forEach(function (order) {
         sum += 6 - order;
-        count++;
       });
     });
-    return sum / count;
+    return sum;
   };
   fetchGameData(playerId, function (assignedMovies, possibleMovies) {
     var list = [];
@@ -701,7 +706,7 @@ function score_3(playerId) {
     movies.forEach(function (movie) {
       list.push({
         movieId: movie,
-        score: calcAvgOrder(assignedMovies[movie].collabs)
+        score: calcSumOrder(assignedMovies[movie].collabs) / assignedMovies[movie].assigned
       });
     });
 
@@ -714,19 +719,18 @@ function score_3(playerId) {
   });
 }
 
-//Score based on order with friendliness taken into account
+//Average score based on order with friendliness taken into account
 function score_3_1(playerId) {
   var best_movies = [];
-  var calcAvgOrder = function (collaborators, friendliness) {
-    var sum = 0, count = 0;
+  var calcSumOrder = function (collaborators, friendliness) {
+    var sum = 0;
     var collabs = Object.keys(collaborators);
     collabs.forEach(function (collab) {
       collaborators[collab].forEach(function (order) {
-        sum += (6 - order) * friendliness[collab];
-        count++;
+        sum += (6 - order) * friendliness.ratio(collab);
       });
     });
-    return sum / count;
+    return sum;
   };
   fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
     var list = [];
@@ -735,7 +739,7 @@ function score_3_1(playerId) {
     movies.forEach(function (movie) {
       list.push({
         movieId: movie,
-        score: calcAvgOrder(assignedMovies[movie].collabs, friendliness)
+        score: calcSumOrder(assignedMovies[movie].collabs, friendliness) / assignedMovies[movie].assigned
       });
     });
 
@@ -751,18 +755,52 @@ function score_3_1(playerId) {
 //Score based on friendliness
 function score_4(playerId) {
   var best_movies = [];
-  var calcScoreFromCollab = function (collaborators, friendliness) {
+  var calcScoreFromCollab = function (collaborators, count, friendliness) {
     var sum = 0;
     var collabs = Object.keys(collaborators);
     collabs.forEach(function (c) {
-      sum += friendliness[c];
+      console.log(friendliness.ratio(c));
+      sum += friendliness.ratio(c);
     });
-    return sum;//collabs.length > 1 ? sum / collabs.length : 0;
+    return sum;
   };
   fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
     var list = [];
     var movies = Object.keys(assignedMovies);
     // console.log(assignedMovies);
+    movies.forEach(function (movie) {
+      list.push({
+        movieId: movie,
+        score: calcScoreFromCollab(assignedMovies[movie].collabs, possibleMovies[movie].appeared, friendliness)
+      });
+    });
+
+    list.sort(function (movie1, movie2) {
+      return movie2.score - movie1.score;
+    });
+
+    best_movies = list.slice(0,5);
+    console.log(best_movies);
+  });
+}
+
+
+//Average score based on friendliness with threshold
+function score_4_1(playerId, threshold) {
+  var best_movies = [];
+  var calcAvgScoreFromCollab = function (collaborators, friendliness) {
+    var sum = 0;
+    var collabs = Object.keys(collaborators);
+    collabs.forEach(function (c) {
+      sum += friendliness.ratio(c);
+    });
+    return collabs.length >= threshold ? sum / collabs.length : 0;
+  };
+  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
+    var list = [];
+    var movies = Object.keys(assignedMovies);
+    console.log(assignedMovies);
+
     movies.forEach(function (movie) {
       list.push({
         movieId: movie,
@@ -779,34 +817,28 @@ function score_4(playerId) {
   });
 }
 
-//Average score based on friendliness
-function score_4_1(playerId) {
-  var best_movies = [];
-  var calcScoreFromCollab = function (collaborators, friendliness) {
-    var sum = 0;
-    var collabs = Object.keys(collaborators);
-    collabs.forEach(function (c) {
-      sum += friendliness[c];
-    });
-    return collabs.length > 1 ? sum / collabs.length : 0;
-  };
+function analaysis(playerId, threshold) {
   fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
     var list = [];
     var movies = Object.keys(assignedMovies);
     // console.log(assignedMovies);
+    var sum = 0;
+    // console.log(assignedMovies);
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: calcAvgScoreFromCollab(assignedMovies[movie].collabs, friendliness)
-      });
+      // var count = 0;
+      // Object.keys(assignedMovies[movie].collabs).forEach(function (c) {
+      //   if (assignedMovies[movie].collabs[c].length === threshold) count++;
+      // });
+      // var avg = count/Object.keys(assignedMovies[movie].collabs).length;
+      // console.log(avg);
+      if (assignedMovies[movie].assigned >= threshold) sum++;
+      // if (Object.keys(assignedMovies[movie].collabs).length >= threshold) sum++;
     });
 
-    list.sort(function (movie1, movie2) {
-      return movie2.score - movie1.score;
-    });
+    sum /= movies.length;
+    console.log(sum);
+    // console.log(playerId + " = " + sum);
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
   });
 }
 
@@ -818,6 +850,19 @@ function checkWhoNeedsToRate() {
     });
   });
 }
-// console.log(score_3_1('963545110359760'));
+
+function runFunctionOverEveryUser(callback) {
+  db.users.find({}, function (err, docs) {
+    docs.forEach(function (user) {
+      callback(user.facebook_id, 3);
+    });
+  });
+}
+
+
+// runFunctionOverEveryUser(analaysis);
+
+// analaysis('963545110359760', 3);
+// score_4_1('963545110359760', 1);
 // updateRating('963545110359760', 11, 4);
-// checkWhoNeedsToRate();
+checkWhoNeedsToRate();
