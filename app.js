@@ -1,11 +1,21 @@
 /*jshint esversion: 6 */
-var extend = require('util')._extend;
+
+/**
+
+This is the backend of this application. It concerns itself with connecting the
+users, checking the matches (known or unknown) and analysing the data.
+
+**/
+
+
+//Imports and database declarations
 var Datastore = require('nedb'),
     db = {}, autoCompact = 10 * 1000;
 
 db.users = new Datastore({filename: 'db/users.db', autoload: true });
 db.movies = new Datastore({filename: 'db/movies.db', autoload: true });
 db.games = new Datastore({filename: 'db/games.db', autoload: true });
+db.analytics = new Datastore({filename: 'db/analytics.db', autoload: true });
 
 
 db.users.ensureIndex({ fieldName: 'facebook_id', unique: true}, function (err) {
@@ -20,10 +30,15 @@ db.games.ensureIndex( {fieldName: 'gameId', unique: true}, function (err) {
   if (err) throw err;
 });
 
+db.analytics.ensureIndex( {fieldName: 'score', unique: true}, function (err) {
+  if (err) throw err;
+});
+
 db.users.persistence.setAutocompactionInterval(autoCompact);
 db.movies.persistence.setAutocompactionInterval(autoCompact);
 db.games.persistence.setAutocompactionInterval(autoCompact);
 
+//Global variables
 var io;
 var gameSocket;
 var joinedPlayers = {};
@@ -50,14 +65,7 @@ var gameStarted = false;
 var deckSize = 60;
 var readyPlayers = 0;
 
-function updateMovies(callback) {
-  db.movies.find( {} , function (err, docs) {
-    movies = docs;
-    callback();
-  });
-}
-
-
+//Export module so it could be imported else where
 exports.initGame = function(s_io, socket) {
   io = s_io;
   gameSocket = socket;
@@ -83,7 +91,7 @@ exports.initGame = function(s_io, socket) {
   gameSocket.on('updateRating', updateRating);
 };
 
-
+//Utility methods for arrays
 Array.prototype.shuffle = function () {
   var j, x, i;
   a = this;
@@ -108,9 +116,19 @@ Array.prototype.unique = function (array) {
   return Object.keys(set).map(function(key) { return set[key]; });
 };
 
+//Fetch the latest movie list
+function updateMovies(callback) {
+  db.movies.find( {} , function (err, docs) {
+    movies = docs;
+    callback();
+  });
+}
+
+//Deck creation method
 function createDeck(size) {
   var deck = [];
   players.forEach(function (player) {
+    player.movieList.shuffle();
     deck.push.apply(deck, player.movieList.slice(0,15));
   });
   var randomMovies = movies.unique(userMovies);
@@ -119,11 +137,12 @@ function createDeck(size) {
   return deck;
 }
 
+//Fetch amount of players in the lobby
 function amountOfPlayers() {
-  console.log('amountOfPlayers called: ' + players.length);
   this.emit('gameSize', players.length);
 }
 
+//Get user information if available, otherwise create a new entry
 function getUser(user) {
   var socket = this;
   user.movies = [];
@@ -146,8 +165,8 @@ function getUser(user) {
   });
 }
 
+//Handle player connections, wait for all users to connect before strating game
 function playerConnect(currPlayer) {
-  // if(players.length < 1) updateMovies(); //TODO wait for movies to update
   var joinedPlayer = joinedPlayers[currPlayer.username];
   if (joinedPlayer) {
     this.emit('loadAssets', joinedPlayer.availableMovies);
@@ -160,8 +179,6 @@ function playerConnect(currPlayer) {
     currPlayer.streak = 0;
     currPlayer.socket = this.id;
     userMovies.push.apply(userMovies, currPlayer.movieList);
-    // player.availableMovies = possibleMovies(player.movieList);
-    // this.emit('loadAssets', player.availableMovies);
     players.push(currPlayer);
   }
   if (players.length === maxPlayers) {
@@ -172,7 +189,6 @@ function playerConnect(currPlayer) {
       var deck = createDeck(deckSize);
 
       io.sockets.emit('loadAssets', deck);
-      // player.availableMovies = movies; //TODO wait fo people to join to serve movies
     });
   } else {
     io.sockets.emit('updateWaitingScreen', {
@@ -185,7 +201,7 @@ function playerConnect(currPlayer) {
 }
 
 
-
+//Handle user getting disconnecting, if all disconnect restart game
 function playerDisconnect() {
 
   var disconnected = this.id;
@@ -209,9 +225,8 @@ function playerDisconnect() {
   });
 }
 
-
+//Check the assigned card and update scores and the pile
 function cardAssigned(data) {
-  console.log(data);
 
   var cards = joinedPlayers[data.assignedBy].cards;
   cards.forEach(function(card) {
@@ -221,12 +236,6 @@ function cardAssigned(data) {
   });
 
   var assignedPlayer = joinedPlayers[data.assignedTo];
-
-  // players.forEach(function(player) {
-  //   if (player.username === data.assignedTo) {
-  //     assignedPlayer = player;
-  //   }
-  // });
 
 
   this.username = data.assignedBy;
@@ -240,7 +249,7 @@ function cardAssigned(data) {
     io.sockets.emit('placeOnPile', [chosen_movie]);//
   }
 }
-
+//Find the movie by ID
 function getMovie(id) {
   var movie;
   movies.forEach(function(m) {
@@ -251,6 +260,7 @@ function getMovie(id) {
   return movie;
 }
 
+//Add collaborator to the datastructure
 function addCollaborator(assignedTo, assignedBy, movie) {
   suggested[assignedTo] = suggested[assignedTo] || {};
   suggested[assignedTo][movie] = suggested[assignedTo][movie] || [];
@@ -261,11 +271,11 @@ function addCollaborator(assignedTo, assignedBy, movie) {
   }
 }
 
+//Check if the binned movie belonged to a player
 function checkBin(assignedBy, movie) {
   var recommendation = {};
   recommendation.known = false;
   var player = joinedPlayers[assignedBy.username];
-  //Get movies of players (excluding current player)
   var movies = userMovies.unique(player.movieList);
 
   //Check if any movie in the set corresponds to a known movie of another player
@@ -275,6 +285,7 @@ function checkBin(assignedBy, movie) {
     recommendation.known = true;
     var score = -10;
     player.score += score;
+    player.streak = 0;
     assignedBy.emit('updateScore', {
       score: score
     });
@@ -288,8 +299,8 @@ function checkBin(assignedBy, movie) {
 
 }
 
+//Update the scores of the respective players/collaborators
 function updateScore(assignedTo, assignedBy, movie) {
-  console.log(assignedTo.username);
   var score = 0;
   var recommendation = {};
   if (assignedTo.movieList.some(function(userMovie) {
@@ -358,6 +369,7 @@ function updateScore(assignedTo, assignedBy, movie) {
   sendLeaderboard();
 }
 
+//Trigger for when user empties their hand or time finishes
 function roundFinished(userData) {
 
   playersFinished++;
@@ -382,18 +394,19 @@ function roundFinished(userData) {
 
 }
 
+//Respond to request to send pile of cards
 function sendPile() {
   this.emit('placeOnPile', pile);
 }
 
+//Respond to request to send the users at the table
 function sendTable() {
   io.sockets.emit('playerJoined', players);
 }
 
+//Sort users by scores and respond to the request to send the leaderboard
 function sendLeaderboard() {
-  // var sortedPlayers = players.slice().sort(function (p1, p2) {
-  //   return p1.score - p2.score;
-  // });
+
   var leaderboard = [];
   for (var player in joinedPlayers) {
     if (joinedPlayers.hasOwnProperty(player)) {
@@ -411,18 +424,21 @@ function sendLeaderboard() {
   io.sockets.emit('updateLeaderboard', leaderboard);
 }
 
+//Handle data coming in about the players card
 function userHand(username, cards) {
-  if (cards.length === 0) {
+  if (cards.length === 0 && playersFinished === maxPlayers) {
     gameOver();
     return;
   }
   joinedPlayers[username].cards = cards;
 }
 
+//Respond to requset to reset the time
 function resetTime() {
   io.sockets.emit('startGame');
 }
 
+//Reinitialise values
 function gameOver() {
   io.sockets.emit('gameOver');
 
@@ -442,10 +458,12 @@ function gameOver() {
   readyPlayers = 0;
 }
 
+//Send trigger to send shake the resepective card in players hand
 function shakeCard(card) {
   io.sockets.emit('shakeCard', card.username, card.index, card.remove);
 }
 
+//Trigger for handling new movie being added by a player to db
 function addMovie(movie, user) {
   db.users.update({ facebook_id : user }, { $addToSet: { movies: movie } });
   db.movies.insert(movie, function (err) {
@@ -456,18 +474,19 @@ function addMovie(movie, user) {
   });
 }
 
+//Update rating of a movie
 function updateRating(user, data) {
   db.users.update({facebook_id: user}, { $addToSet: { rated: data}}, { upsert : true });
 }
 
+//Remove a movie from a users list
 function removeMovie(movie, user) {
-  console.log(movie.id);
   db.users.update({ facebook_id : user }, { $pull: { movies: movie } }, {returnUpdatedDocs: true}, function (err, num, aff) {
     if (err) throw err;
-    console.log(aff);
   });
 }
 
+//Wait for all users to render the game before starting the timer
 function playerReady() {
   readyPlayers++;
   if (readyPlayers === maxPlayers) {
@@ -483,11 +502,12 @@ function playerReady() {
   }
 }
 
+//Send trigger to show info about player bonus
 function showInfo(player, info) {
   io.sockets.emit('showInfo', player, info);
 }
 
-
+//Store game data
 function storePlayerInfo(data) {
   data.timestamp = Date.now();
   var game = recommendations[gameId] || {};
@@ -505,15 +525,14 @@ function storePlayerInfo(data) {
   });
 }
 
-
+//FOR Remote config, used manually
 function setConfig(data) {
-  console.log(data);
   deckSize = data.deckSize || 60;
   maxPlayers = data.maxPlayers || 2;
   maxTime = data.maxTime * 60 || 6 * 60 ;
 }
 
-
+//Fetch and format game data for analaysis
 function fetchGameData(playerId, callback) {
 
   db.games.find({players: { $elemMatch: playerId}}).sort({gameId: 1}).exec(function (err, docs) {
@@ -538,50 +557,49 @@ function fetchGameData(playerId, callback) {
 
 
           var movie = round[match].movieId;
+
+          possibleMovies[movie] = possibleMovies[movie] || {};
+          possibleMovies[movie].collabs = possibleMovies[movie].collabs || {};
+          possibleMovies[movie].appeared = possibleMovies[movie].appeared || 0;
+          possibleMovies[movie].assigned = possibleMovies[movie].assigned || 0;
+          possibleMovies[movie].appeared++;
+
+          friendliness[round[match].playerId] = friendliness[round[match].playerId] || {};
+          friendliness[round[match].playerId].total = friendliness[round[match].playerId].total || 0;
+          friendliness[round[match].playerId].correct = friendliness[round[match].playerId].correct || 0;
+
           if (round[match].friendId === playerId) {
 
+            // assignedMovies[movie] = assignedMovies[movie] || {};
 
-            friendliness[round[match].playerId] = friendliness[round[match].playerId] || {};
-            friendliness[round[match].playerId].total = friendliness[round[match].playerId].total || 0;
-            friendliness[round[match].playerId].correct = friendliness[round[match].playerId].correct || 0;
-
-            assignedMovies[movie] = assignedMovies[movie] || {};
-
-            if (assignedMovies[movie].known === undefined) assignedMovies[movie].known = round[match].known;
+            if (possibleMovies[movie].known === undefined) possibleMovies[movie].known = round[match].known;
 
             if (round[match].known) friendliness[round[match].playerId].correct++;
             friendliness[round[match].playerId].total++;
 
+            possibleMovies[movie].collabs[round[match].playerId] = possibleMovies[movie].collabs[round[match].playerId] || [];
+            possibleMovies[movie].collabs[round[match].playerId].push(order[round[match].playerId]);
 
-            assignedMovies[movie].collabs = assignedMovies[movie].collabs || {};
-
-            assignedMovies[movie].collabs[round[match].playerId] = assignedMovies[movie].collabs[round[match].playerId] || [];
-            assignedMovies[movie].collabs[round[match].playerId].push(order[round[match].playerId]);
-
-            assignedMovies[movie].assigned = assignedMovies[movie].assigned || 0;
-            assignedMovies[movie].assigned++;
+            possibleMovies[movie].assigned++;
 
           }
-          possibleMovies[movie] = possibleMovies[movie] || {};
-          possibleMovies[movie].appeared = possibleMovies[movie].appeared || 0;
-          possibleMovies[movie].appeared++;
+
         });
       });
     });
     friendliness.ratio = function (playerId) {
       return this[playerId].correct / this[playerId].total;
     };
-    callback(assignedMovies, possibleMovies, friendliness);
+    callback(possibleMovies, friendliness);
   });
 
 }
 
+//Fetch all the movies that need to be rated
 function fetchRecommendations(playerId, testing) {
   var socket = this;
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+  fetchGameData(playerId, function (possibleMovies) {
     var list = [];
-    var uniqueKeys = Object.keys(assignedMovies);
-    var possibleKeys = Object.keys(possibleMovies);
 
     db.users.findOne({facebook_id: playerId}, function (err, user) {
       possibleKeys.forEach(function (movie) {
@@ -605,28 +623,18 @@ function fetchRecommendations(playerId, testing) {
 
 }
 //based on if card was assigned or not
-function score_0(playerId) {
+function score_0(playerId, threshold, results) {
   var best_movies = [];
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+  fetchGameData(playerId, function (possibleMovies) {
     //All these movies have a score of 1 since they were assigned
-    var movies = Object.keys(assignedMovies);
-    best_movies = movies.slice(0,5);
-    console.log(best_movies);
-  });
-
-  return best_movies;
-}
-
-//based on amount of users that recommended specific movie
-function score_1(playerId) {
-  var best_movies = [];
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
+    var movies = Object.keys(possibleMovies);
     movies.forEach(function (movie) {
+      var score = possibleMovies[movie].assigned > 0 ? 1 : 0;
+      if (score === threshold.atLeast || threshold.notUsed)
       list.push({
         movieId: movie,
-        score: assignedMovies[movie].assigned
+        score: score
       });
     });
 
@@ -634,60 +642,116 @@ function score_1(playerId) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
+  });
+}
+
+//based on amount of users that recommended specific movie
+function score_1(playerId, threshold, results) {
+  var best_movies = [];
+  fetchGameData(playerId, function (possibleMovies) {
+    var list = [];
+    var movies = Object.keys(possibleMovies);
+
+    movies.forEach(function (movie) {
+      if (possibleMovies[movie].assigned === threshold.atLeast || threshold.notUsed) {
+        list.push({
+          movieId: movie,
+          score: possibleMovies[movie].assigned
+        });
+      }
+    });
+
+    list.sort(function (movie1, movie2) {
+      return movie2.score - movie1.score;
+    });
+
+    best_movies = list.slice(0,10);
+
+    //Check that the user participated in some games
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
   });
 }
 
 //Score based on amount assigned / amount appeared
-function score_2(playerId) {
+function score_2(playerId, threshold, results ) {
   var best_movies = [];
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+  fetchGameData(playerId, function (possibleMovies) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
+    var movies = Object.keys(possibleMovies);
 
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: assignedMovies[movie].assigned  / possibleMovies[movie].appeared
-      });
+      var score = possibleMovies[movie].assigned  / possibleMovies[movie].appeared;
+      if ((score > threshold.min && score <= threshold.max) || threshold.notUsed) {
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
   });
 }
 
 //Score based on amount assigned / amount appeared with threshold taken into consideration
-function score_2_1(playerId, threshold) {
+function score_2_1(playerId, threshold, results) {
   var best_movies = [];
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+  fetchGameData(playerId, function (possibleMovies) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
+    var movies = Object.keys(possibleMovies);
 
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: possibleMovies[movie].appeared >= threshold ? assignedMovies[movie].assigned  / possibleMovies[movie].appeared : 0
-      });
+      var score = possibleMovies[movie].assigned  / possibleMovies[movie].appeared;
+      if (((score > threshold.min && score <= threshold.max) || threshold.notUsed) && possibleMovies[movie].assigned >= threshold.atLeast) {
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
+
   });
 }
 
 
 //Avg score based on order
-function score_3(playerId) {
+function score_3(playerId, threshold, results) {
   var best_movies = [];
   var calcSumOrder = function (collaborators) {
     var sum = 0;
@@ -699,28 +763,36 @@ function score_3(playerId) {
     });
     return sum;
   };
-  fetchGameData(playerId, function (assignedMovies, possibleMovies) {
+  fetchGameData(playerId, function (possibleMovies) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
-    // console.log(assignedMovies);
+    var movies = Object.keys(possibleMovies);
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: calcSumOrder(assignedMovies[movie].collabs) / assignedMovies[movie].assigned
-      });
+      var score = calcSumOrder(possibleMovies[movie].collabs) / possibleMovies[movie].assigned;
+      if ((score > threshold.min && score <= threshold.max) || threshold.notUsed) {
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
   });
 }
 
 //Average score based on order with friendliness taken into account
-function score_3_1(playerId) {
+function score_3_1(playerId, threshold, results) {
   var best_movies = [];
   var calcSumOrder = function (collaborators, friendliness) {
     var sum = 0;
@@ -732,117 +804,140 @@ function score_3_1(playerId) {
     });
     return sum;
   };
-  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
+  fetchGameData(playerId, function (possibleMovies, friendliness) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
-    // console.log(assignedMovies);
+    var movies = Object.keys(possibleMovies);
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: calcSumOrder(assignedMovies[movie].collabs, friendliness) / assignedMovies[movie].assigned
-      });
+      var score = calcSumOrder(possibleMovies[movie].collabs, friendliness) / possibleMovies[movie].assigned;
+      if ((score > threshold.min && score <= threshold.max) || threshold.notUsed) {
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: threshold.notUsed ? best_movies : list
+      });
+    }
+
   });
 }
 
 //Score based on friendliness
-function score_4(playerId) {
+function score_4(playerId, threshold, results) {
   var best_movies = [];
   var calcScoreFromCollab = function (collaborators, count, friendliness) {
     var sum = 0;
     var collabs = Object.keys(collaborators);
     collabs.forEach(function (c) {
-      console.log(friendliness.ratio(c));
       sum += friendliness.ratio(c);
     });
     return sum;
   };
-  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
+  fetchGameData(playerId, function (possibleMovies, friendliness) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
-    // console.log(assignedMovies);
+    var movies = Object.keys(possibleMovies);
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: calcScoreFromCollab(assignedMovies[movie].collabs, possibleMovies[movie].appeared, friendliness)
-      });
+      var score = calcScoreFromCollab(possibleMovies[movie].collabs, possibleMovies[movie].appeared, friendliness);
+      if ((score > threshold.min && score <= threshold.max)  || threshold.notUsed){
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: best_movies
+      });
+    }
   });
 }
 
 
 //Average score based on friendliness with threshold
-function score_4_1(playerId, threshold) {
+function score_4_1(playerId, threshold, results) {
   var best_movies = [];
   var calcAvgScoreFromCollab = function (collaborators, friendliness) {
     var sum = 0;
-    var collabs = Object.keys(collaborators);
-    collabs.forEach(function (c) {
+    collaborators.forEach(function (c) {
       sum += friendliness.ratio(c);
     });
-    return collabs.length >= threshold ? sum / collabs.length : 0;
+    return sum;
   };
-  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
+  fetchGameData(playerId, function (possibleMovies, friendliness) {
     var list = [];
-    var movies = Object.keys(assignedMovies);
-    console.log(assignedMovies);
+    var movies = Object.keys(possibleMovies);
 
     movies.forEach(function (movie) {
-      list.push({
-        movieId: movie,
-        score: calcAvgScoreFromCollab(assignedMovies[movie].collabs, friendliness)
-      });
+      var collabs = Object.keys(possibleMovies[movie].collabs);
+      var score = calcAvgScoreFromCollab(collabs, friendliness);
+      if (((score > threshold.min && score <= threshold.max) || threshold.notUsed) && collabs.length >= threshold.atLeast) {
+        list.push({
+          movieId: movie,
+          score: score
+        });
+      }
     });
 
     list.sort(function (movie1, movie2) {
       return movie2.score - movie1.score;
     });
 
-    best_movies = list.slice(0,5);
-    console.log(best_movies);
+    best_movies = list.slice(0,10);
+
+    if (movies.length > 0) {
+      results.push({
+        playerId: playerId,
+        movies: best_movies
+      });
+    }
   });
 }
 
+//Function used for simple analysis of some specific game data
 function analaysis(playerId, threshold) {
-  fetchGameData(playerId, function (assignedMovies, possibleMovies, friendliness) {
-    var list = [];
-    var movies = Object.keys(assignedMovies);
-    // console.log(assignedMovies);
-    var sum = 0;
-    // console.log(assignedMovies);
-    movies.forEach(function (movie) {
-      // var count = 0;
-      // Object.keys(assignedMovies[movie].collabs).forEach(function (c) {
-      //   if (assignedMovies[movie].collabs[c].length === threshold) count++;
-      // });
-      // var avg = count/Object.keys(assignedMovies[movie].collabs).length;
-      // console.log(avg);
-      if (assignedMovies[movie].assigned >= threshold) sum++;
-      // if (Object.keys(assignedMovies[movie].collabs).length >= threshold) sum++;
+  db.games.find({}).sort({gameId: 1}).exec(function (err, docs) {
+    var games = docs;
+    var players = {};
+    var total = 0;
+    var numbergames = 0;
+    games.forEach(function (game) {
+      var exists = false;
+      var sum = 0;
+      game.players.forEach(function (player) {
+        players[player] = players[player] || 0;
+        players[player]++;
+        total++;
+      });
+
     });
-
-    sum /= movies.length;
-    console.log(sum);
-    // console.log(playerId + " = " + sum);
-
+    var sum = 0;
+    Object.keys(players).forEach(function (key) {
+      sum += players[key] / 32;
+    });
   });
 }
 
-
+//Script for checking if everyone rated their movies
 function checkWhoNeedsToRate() {
   db.users.find({}, function (err, docs) {
     docs.forEach(function (user) {
@@ -851,18 +946,62 @@ function checkWhoNeedsToRate() {
   });
 }
 
-function runFunctionOverEveryUser(callback) {
+//Script to run a scoring function over all users
+function runFunctionOverEveryUser(callback, threshold, results) {
+  var playerRatings = {};
   db.users.find({}, function (err, docs) {
     docs.forEach(function (user) {
-      callback(user.facebook_id, 3);
+      fetchRatings(user.facebook_id, playerRatings);
+      callback(user.facebook_id, threshold, results);
     });
+
+  });
+  //Inefficent but solves the problem
+
+
+  setTimeout(function () {
+    var sumSetSize = 0;
+    var sumRating = 0;
+    var count = 0;
+    results.forEach(function (result) {
+      sumSetSize += result.movies.length;
+      result.movies.forEach(function (movie) {
+        if (playerRatings[result.playerId][movie.movieId]) {
+          sumRating += playerRatings[result.playerId][movie.movieId];
+          count++;
+        }
+      });
+    });
+
+    var avgResults = {
+      func: callback.name,
+      score: threshold.max,
+      avgRating: sumRating / count,
+      avgSetSize: sumSetSize / results.length
+    };
+
+    db.analytics.insert(avgResults,function (err) {
+      if (err) console.log(err);
+      console.log("done");
+    });
+  }, 1000);
+}
+
+//Fetch the ratings that the user gave to the movies, for analysis
+function fetchRatings(playerId, result) {
+  result[playerId] = {};
+  db.users.findOne({facebook_id: playerId}, function (err, doc) {
+    if (doc.rated) {
+      doc.rated.forEach(function (rating) {
+        result[playerId][rating.movieId] = rating.rating;
+      });
+    }
   });
 }
 
-
-// runFunctionOverEveryUser(analaysis);
-
-// analaysis('963545110359760', 3);
-// score_4_1('963545110359760', 1);
-// updateRating('963545110359760', 11, 4);
-checkWhoNeedsToRate();
+//Timeout to prevent concurency errors during analysis
+var waitFunc = function(arg) {
+  setTimeout(function () {
+    runFunctionOverEveryUser(analaysis, {min: arg, max: arg + 1, atLeast: 3}, []);
+  }, arg * 1000);
+};

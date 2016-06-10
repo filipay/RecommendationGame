@@ -1,7 +1,10 @@
 /**
- * Created by filip on 14/10/15.
- */
 
+Main JavaScript which creates the game
+
+**/
+
+//Global variable declarations
 var randomMovies = [];
 var currentUser;
 var cards;
@@ -9,6 +12,7 @@ var cards;
 var width = 800,
   height = 600;
 
+//Import relevant PIXI objects
 var Container = PIXI.Container,
   MovieClip = PIXI.extras.MovieClip,
   TextureCache = PIXI.utils.TextureCache,
@@ -19,6 +23,7 @@ var Container = PIXI.Container,
   Text = PIXI.Text,
   Point = PIXI.Point;
 
+//Set triggers and responses
 socket.on('updateScore', updateScore);
 socket.on('playerJoined', createTable);
 socket.on('loadAssets', loadAssets);
@@ -34,6 +39,7 @@ socket.on('shakeCard', shakeCard);
 socket.on('updateWaitingScreen', updateWaitingScreen);
 socket.on('showInfo', showInfo);
 
+//Set the window
 var renderer = PIXI.autoDetectRenderer(
   width, height, {
     antialias: true,
@@ -50,12 +56,14 @@ renderer.backgroundColor = 0x0B5394;
 
 document.body.appendChild(renderer.view);
 
+//Set sounds available
 var cardPlaceSound = ['/sounds/cardPlace1.wav', '/sounds/cardPlace2.wav', '/sounds/cardPlace3.wav', '/sounds/cardPlace4.wav'];
 
 var cardAssignSound = ['/sounds/cardSlide1.wav', '/sounds/cardSlide2.wav', '/sounds/cardSlide3.wav', '/sounds/cardSlide4.wav', '/sounds/cardSlide5.wav', '/sounds/cardSlide6.wav', '/sounds/cardSlide7.wav', '/sounds/cardSlide8.wav'];
 
 var cardFeelSound = ['/sounds/cardShove1.wav', '/sounds/cardShove2.wav', '/sounds/cardShove3.wav', '/sounds/cardShove4.wav'];
 
+//Set stages
 var stage = new Container();
 stage.baseContainer = true;
 var waitingScreen = new Container();
@@ -72,10 +80,9 @@ waitingText.anchor.set(0.5,0.5);
 waitingText.position.set((window.innerWidth) * 0.5, (window.innerHeight ) * 0.5);
 waitingScreen.addChild(waitingText);
 
-
-
 requestAnimationFrame(animate);
 
+//Utility functions
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -84,30 +91,25 @@ function getRandomDouble(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-// function gameSize(size) {
-//   socket.emit('getUser', size + 2);
-//   $.getJSON('/user.php?user_id=' + (size + 2), function(data) {
-//     currentUser = new User(data.name, data.username, data.avatar, data.movies);
-//     socket.emit('joinGame', currentUser);
-//   });
-// }
 
 function updateWaitingScreen(data) {
   waitingText.text = 'Waiting for players... (' + data.noPlayers + ' / ' + data.maxPlayers+')';
   floatAwayText(data.joinedUser + ' joined!', 60, display);
 }
 
+
+//Set the user data
 function setGameUser(user) {
   currentUser = new User(user.name, user.facebook_id, user.picture, user.movies);
-  console.log(currentUser);
 
   socket.emit('joinGame', currentUser);
 }
+
 setGameUser(FB.me);
 
+//Load all of the textures needed for the game
 function loadAssets(movies) {
 
-  console.log(movies);
   randomMovies = movies;
   var uniqueMovies = {};
   movies.forEach(function(movie) {
@@ -118,13 +120,12 @@ function loadAssets(movies) {
   });
 
   loadMovies.forEach(function(movie) {
-    console.log(movie);
     loader.add(movie.poster_url);
   });
-  console.log(randomMovies);
   loadPlaceholders();
 }
 
+//User object init
 function User(name, username, avatar, movieList) {
   this.name = name;
   this.username = username;
@@ -133,10 +134,12 @@ function User(name, username, avatar, movieList) {
   this.score = 0;
 }
 
+//Make sure to disconnect before closing the tab
 $(window).on('beforeunload', function() {
   socket.close();
 });
 
+//Update user score
 function updateScore(data) {
   if (data.score > 10) {
     new Howl({
@@ -151,12 +154,9 @@ function updateScore(data) {
   currentScore.text = currentUser.score;
 
   floatAwayText('+' + data.score, 50, currentScore);
-  // new TWEEN.Tween(currentScore.scale).to({
-  //   x: 1 + Math.min(data.score / 100, 1),
-  //   y: 1 + Math.min(data.score / 100, 1)
-  // }, 200).repeat(1).yoyo(true).start();
 }
 
+//Load the standard textures
 function loadPlaceholders() {
   loader
     .add('card', 'images/card.png')
@@ -166,13 +166,11 @@ function loadPlaceholders() {
     .load(setup);
 }
 
-
+//Set default card width
 var card_w = 100,
   card_h = 150;
-// var card_w = 80;
-// var card_h = card_w * 16.0 / 9.0;
 
-
+//Set the score text
 var score = new PIXI.Text(
   'Score : ', {
     font: '40px sans-serif',
@@ -180,6 +178,7 @@ var score = new PIXI.Text(
   }
 );
 
+//Set the timers
 var time = 30;
 var timer;
 var timeText = new PIXI.Text('00:00', {
@@ -189,12 +188,15 @@ var timeText = new PIXI.Text('00:00', {
 timeText.position.x = 50;
 timeText.position.y = 110;
 
+
+//Start the game/clock
 function startGame() {
   if (timer) clearInterval(timer);
   time = 30;
   timer = setInterval(updateTime, 1000);
 }
 
+//updateTime
 function updateTime() {
   time--;
   timeText.text = pad(time);
@@ -207,6 +209,7 @@ function updateTime() {
   }
 }
 
+//Pad the time to have the 00:30
 function pad(time) {
   var time_string = '';
   var seconds = time % 60;
@@ -227,6 +230,7 @@ currentScore = new PIXI.Text('0', {
   fill: 'white'
 });
 
+//Position the score elements
 score.addChild(currentScore);
 currentScore.anchor.set(0.5,0.5);
 currentScore.position.x = score.width + 30;
@@ -237,33 +241,9 @@ stage.addChild(score);
 stage.addChild(timeText);
 
 
-// var leaderboard = new Container();
-// var leader = new Text('', {
-//   font: '30px sans-serif',
-//   fill: 'yellow'
-// });
-// var others = new Text('', {
-//   font: '20px sans-serif',
-//   fill: 'white',
-//   align: 'left',
-//   lineHeight: 25
-// });
-//
-// leader.position = new Point(0, 0);
-// others.position = new Point(0, 50);
-// leaderboard.addChild(leader);
-// leaderboard.addChild(others);
-// leaderboard.position = new Point(window.innerWidth * 0.7, 50);
-//
-// stage.addChild(leaderboard);
-
-
+//Update the user on the current score of each player
 function updateLeaderboard(players) {
-  // leader.text = players[0].name + ': ' + players[0].score;
-  // others.text = '';
-  // for (var i = 1; i < players.length; i++) {
-  //   others.text += players[i].name + ': ' + players[i].score + '\n';
-  // }
+
   var highlight = true;
   table.leader = players[0];
   if (players[0].score === players[1].score) {
@@ -286,6 +266,7 @@ function updateLeaderboard(players) {
   }
 }
 
+//Create a blank card/face down
 function BlankCard(position, rotation) {
   var background = new Sprite(resources.card.texture);
   background.position = position;
@@ -301,6 +282,7 @@ function BlankCard(position, rotation) {
   return background;
 }
 
+//Create a card
 function Card(position, movie, options, rotation) {
 
   var container = new Container();
@@ -376,6 +358,7 @@ function Card(position, movie, options, rotation) {
   return container;
 }
 
+//Create a player/avatar for the table
 function Player(position, user, handSize) {
   var player = new Container();
   player.position.x = position.x;
@@ -428,10 +411,10 @@ function Player(position, user, handSize) {
   });
   player.addChild(player.cards);
 
-console.log(player);
   return player;
 }
 
+//Create the user hand, positioning
 function createHand(movies, position, options, rotation) {
   var start_angle = 150,
     end_angle = 210;
@@ -474,7 +457,7 @@ function createHand(movies, position, options, rotation) {
   return hand;
 }
 
-
+//Create the table
 var table = new Container();
 
 function createTable(players, callback) {
@@ -521,6 +504,7 @@ function createPile(position, size) {
   return pile;
 }
 
+//Create the bin
 var bin;
 function Bin() {
   var bin = new Sprite.fromImage('images/bin.png');
@@ -536,6 +520,8 @@ function Bin() {
   return bin;
 }
 
+
+//Setup the game, creating the hand, players and the table
 function setup() {
   if (!currentUser.cards) {
     currentUser.cards = getRandomCardList(randomMovies, 5);
@@ -568,30 +554,29 @@ function setup() {
   requestAnimationFrame(animate);
 
 }
-
+//Animation function
 function animate(time) {
   requestAnimationFrame(animate);
   TWEEN.update(time);
   renderer.render(display);
 }
 
+//Fetch random cards from the deck and remove them
 function getRandomCardList(movies, size) {
-  console.log('m len : ' + movies.length);
-  console.log('size : ' + size);
   size = movies.length < size ? movies.length : size;
   var list = [];
 
   for (var i = 0; i < size; i++) {
-    // console.log(movies);
     var index = getRandomInt(0, movies.length - 1);
     list.push(movies[index]);
 
     movies.splice(index, 1);
   }
-  // console.log(list);
   return list;
 }
 
+
+//Get blank cards to set the face down cards
 function getBlankCardsList(size) {
   var movies = [];
   for (var i = 0; i < size; i++) {
@@ -602,7 +587,7 @@ function getBlankCardsList(size) {
   return movies;
 }
 
-
+//Handling start of dragging event
 function onDragStart(event) {
   // store a reference to the data
   // the reason for this is because of multitouch
@@ -621,12 +606,10 @@ function onDragStart(event) {
     this.player = undefined;
     this.origin = new PIXI.Point(this.position.x, this.position.y);
   }
-  // highlightAndFade(this.background, Math.random(), 2);
-  // floatAwayText('+10',50,this);
-  // blowUpText('text: string',50,this);
-  // highlightRainbow(this.background, 2);
+
 }
 
+// Handle the end of a drag event
 function onDragEnd() {
   if (this.assignedTo) {
     assignCard(this);
@@ -651,7 +634,7 @@ function onDragEnd() {
   this.data = null;
 }
 
-
+//Handle the dragging of a card
 function onDragMove() {
 
   if (this.dragging) {
@@ -669,7 +652,6 @@ function isCardOnAvatar(card) {
     return (card.assignedTo = bin);
 
   }
-  console.log('blleeeeeh');
   var players = table.children;
   table.children.some(function(player) {
     var avatar = player.children[0];
@@ -683,6 +665,7 @@ function isCardOnAvatar(card) {
   });
 }
 
+//If the player is hover over highlight their name
 function onPlayerHover(player) {
   player.getChildAt(1).style = {
     font: '20px sans-serif',
@@ -690,6 +673,7 @@ function onPlayerHover(player) {
   };
 }
 
+//If the player hovers the card out change back the name to white
 function onPlayerHoverOut(player) {
   player.getChildAt(1).style = {
     font: '20px sans-serif',
@@ -697,6 +681,7 @@ function onPlayerHoverOut(player) {
   };
 }
 
+//Shake a card of a specific user
 function shakeCard(username, cardIndex, remove) {
   var player;
   table.children.some(function (child) {
@@ -704,7 +689,6 @@ function shakeCard(username, cardIndex, remove) {
     return child.username === username;
   });
   if (player) {
-    console.log(player);
     var card = player.cards.children[cardIndex];
     if (remove) {
       if (card.tween) card.tween.stop();
@@ -723,6 +707,7 @@ function shakeCard(username, cardIndex, remove) {
   }
 }
 
+//Assign a card to a player, send the trigger to backend
 function assignCard(card) {
   if (card.assignedTo.sound) card.assignedTo.sound.play();
   socket.emit('assignCard', {
@@ -736,7 +721,6 @@ function assignCard(card) {
     remove: true
   });
   if (card.parent.children.length == 1) {
-    console.log(currentUser);
     socket.emit('roundFinished', {
       username: currentUser.username,
       time: time
@@ -745,6 +729,7 @@ function assignCard(card) {
   card.parent.removeChild(card);
 }
 
+//Handle new cards being added to the pile
 function placeOnPile(movies) {
   var padding = {
     x: 200,
@@ -782,6 +767,7 @@ function placeOnPile(movies) {
 
 }
 
+//Start a new round
 function newRound() {
   socket.emit('requestResetTime');
   stage.removeChild(hand);
@@ -803,6 +789,7 @@ function newRound() {
   pile.removeChildren();
 }
 
+//Set the variables of the players after being disconnected
 function resume(player) {
   display = stage;
   currentUser.score = player.score;
@@ -810,6 +797,7 @@ function resume(player) {
   currentUser.cards = player.cards;
 }
 
+//Show the winner of the game and fade out the background elements
 function gameOver() {
   clearInterval(timer);
   var gameOverText = new Text('Thanks for playing!', {
@@ -843,7 +831,9 @@ function gameOver() {
   }).easing(TWEEN.Easing.Bounce.Out).start();
 }
 
+//UTILITY FUNCTIONS FOR SHOWING INFORMATION
 
+//Bring the text towards the player
 function blowUpText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
@@ -881,6 +871,7 @@ function blowUpText(text, size, container, options) {
   }, 1500).delay(delay).start();
 }
 
+//Float some text away from a container
 function floatAwayText(text, size, container, options) {
   var hex = hslToHex(Math.random(), 1.0, 0.6);
   var showText = new Text(text, {
@@ -914,11 +905,13 @@ function floatAwayText(text, size, container, options) {
   }, 1000).delay(delay).start();
 }
 
+//Change component of RGB to HEX
 function componentToHex(c) {
   var hex = c.toString(16);
   return hex == 1 ? '0' + hex : hex;
 }
 
+//Highlight a sprite with a tint and fade away
 function highlightAndFade(sprite, hue, duration_s) {
   duration_s *= 1000;
 
@@ -936,6 +929,7 @@ function highlightAndFade(sprite, hue, duration_s) {
   }).start();
 }
 
+//Highlight the sprite continously with changing colours
 function highlightRainbow(sprite) {
 
   var hsl = {
@@ -960,6 +954,7 @@ function highlightRainbow(sprite) {
   return tween;
 }
 
+//Convert hsl paramters to an rgb hex notation
 function hslToHex(h, s, l){
     var r, g, b;
 
@@ -987,7 +982,8 @@ function hslToHex(h, s, l){
     return parseInt(r+g+b, 16);
 }
 
-//TODO testing
+
+// Queue the information coming so the user can see it 
 var queue = 0;
 function showInfo(player, info) {
   var options = {};

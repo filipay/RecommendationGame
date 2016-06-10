@@ -1,3 +1,11 @@
+/**
+
+Script concering itself with connecting with the Facebook Graph API.
+Sends relevant info to backend
+This is mostly based on the template provided by FB
+
+**/
+
 var socket;
 var user;
 
@@ -13,21 +21,14 @@ function statusChangeCallback(response) {
     var button = $('#fb-btn');
     button.html('Logout');
     button.attr('onclick', 'logout();');
-    // button.unbind('click').click(function (e) {
-    //   console.log("Logging out...");
-    //   FB.logout(function (response) {
-    //     console.log(response);
-    //   });
-    // });
+
     socket = io.connect();
     socket.on('setUser', setUser);
     socket.on('recList', prepareRecommendations);
-    
+
     $('#main-screen').html($('#search-movies').html());
     getUserInfo();
     prepareMovieSearch();
-    // console.log('connected!!!');
-    // testAPI();
   } else if (response.status === 'not_authorized') {
     // The person is logged into Facebook, but not your app.
     $('#main-screen').html('Please log into this app.');
@@ -50,17 +51,6 @@ window.fbAsyncInit = function() {
     version: 'v2.5' // use graph api version 2.5
   });
 
-  // Now that we've initialized the JavaScript SDK, we call
-  // FB.getLoginStatus().  This function gets the state of the
-  // person visiting this page and can return one of three states to
-  // the callback you provide.  They can be:
-  //
-  // 1. Logged into your app ('connected')
-  // 2. Logged into Facebook, but not your app ('not_authorized')
-  // 3. Not logged into Facebook and can't tell if they are logged into
-  //    your app or not.
-  //
-  // These three cases are handled in the callback function.
 
   FB.getLoginStatus(function(response) {
     statusChangeCallback(response);
@@ -78,11 +68,10 @@ window.fbAsyncInit = function() {
   fjs.parentNode.insertBefore(js, fjs);
 }(document, 'script', 'facebook-jssdk'));
 
-
+//Check if the user exists in the db, fetch info if available
 function getUserInfo() {
   console.log('getting user info..');
   FB.api('/me', function(response) {
-    console.log(response);
     FB.me = response;
     FB.api('/me/picture?width=300', function (response) {
       FB.me.picture = response.data.url;
@@ -91,11 +80,13 @@ function getUserInfo() {
   });
 }
 
+//Handle trigger to set the user info
 function setUser(user) {
   FB.me = user;
   setUserMovies();
 }
 
+//Custom login function.
 function login() {
   FB.login(function (response) {
     if (response.authResponse) {
@@ -106,6 +97,7 @@ function login() {
   });
 }
 
+//Custom logout function.
 function logout() {
   console.log('Logging out...');
   FB.logout(function (response) {

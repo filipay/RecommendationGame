@@ -1,10 +1,18 @@
+/**
+
+  This script handles all the JavaScript required for the website.
+  It fetches the movies, ratings and switches the content.
+
+**/
+
+//Global variables
 var movie_div;
 var image_url = 'http://image.tmdb.org/t/p/w500';
 var placeholder = 'images/placeholder_poster.png';
 var results = {};
 $('.navbar').hide();
 
-
+//Prepare the website for searching of movies
 function prepareMovieSearch() {
   movie_div = $('.container.results').find('.row.movies').clone();
   $('#result').hide();
@@ -19,9 +27,9 @@ function prepareMovieSearch() {
 
   if (FB.me.movies) setUserMovies();
 
-  console.log("Prepare finished");
 }
 
+//Prepare the website for rating movies
 function prepareRecommendations(movieList) {
   if (movieList.length > 0) {
     var recommend = $('.container.rec-results').clone();
@@ -30,7 +38,6 @@ function prepareRecommendations(movieList) {
     $('.list-group.rec-group').html('');
 
     if (movieList.length > 0) {
-      // console.log(movies.Search);
       results = {};
       movieList.forEach(function(movie) {
         if (movie) {
@@ -51,6 +58,7 @@ function prepareRecommendations(movieList) {
   }
 }
 
+//The search function which queries TMDB and populates the website
 function searchMovies() {
   $('.container.results').hide();
   $('.row.movies').html(movie_div.clone());
@@ -63,7 +71,6 @@ function searchMovies() {
   $.getJSON(search_url, function(movies) {
 
     if (movies.results.length > 0) {
-      // console.log(movies.Search);
       results = {};
       movies.results.forEach(function(movie) {
 
@@ -87,11 +94,10 @@ function searchMovies() {
   });
 }
 
-
+//Select a recommendation to rate and change the data displayed as well as buttons
 function selectedRecommendation(event) {
   var id = parseInt(event.id) || parseInt($(event.target).attr('data-movieid'));
   var movie = results[id];
-  console.log(id);
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
 
   $('.overview').html(movie.overview);
@@ -113,10 +119,10 @@ function selectedRecommendation(event) {
 
 
 }
+
+//Select a movie and change the data within the display section as well as buttons
 function selectedMovie(event) {
-  console.log("movies");
   var id = event.id || parseInt($(event.target).attr('data-movieid'));
-  console.log(id);
   var movie = results[id];
 
   $('.title-poster').html(movie.title + ' (' + movie.release_date.substring(0, movie.release_date.indexOf('-')) + ')');
@@ -148,6 +154,7 @@ function selectedMovie(event) {
 
 }
 
+//Show the game, check if user has 20 movies
 function showGame() {
   if (FB.me.movies.length >= 20) {
     $('.navbar.navbar-default').hide();
@@ -158,6 +165,7 @@ function showGame() {
 
 }
 
+//Show how to play
 function showHowTo() {
   $('#nav-how-to').prop('class','active');
   $('#nav-recom').prop('class','inactive');
@@ -165,6 +173,7 @@ function showHowTo() {
   $('#main-screen').html($('#how-to').html());
 }
 
+//Show the rate movies page
 function showRecommendations() {
   $('#nav-how-to').prop('class','inactive');
   $('#nav-recom').prop('class','active');
@@ -174,6 +183,7 @@ function showRecommendations() {
 
 }
 
+//Show the search movies page
 function showMovies() {
   $('#nav-how-to').prop('class','inactive');
   $('#nav-recom').prop('class','inactive');
@@ -183,6 +193,7 @@ function showMovies() {
 
 }
 
+//Set the list of user movies which they have added
 function setUserMovies() {
   var listing = movie_div.find('.list-group-item.movie');
   var movies = $('.list-group.user-movies');

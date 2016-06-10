@@ -1,0 +1,6 @@
+{"func":"score_3_1","score":2,"avgRating":4.042727272727273,"avgSetSize":35.483870967741936,"_id":"2UHhQ8ka0GfznPax"}
+{"func":"score_3_1","score":4,"avgRating":3.5384615384615383,"avgSetSize":0.41935483870967744,"_id":"FFhsBJp95lJk00KX"}
+{"func":"score_3_1","score":3,"avgRating":4.075,"avgSetSize":5.161290322580645,"_id":"LRGOZmfPACLSWfgv"}
+{"func":"score_3_1","score":5,"avgRating":null,"avgSetSize":0,"_id":"TzDG59QPtuA2buX3"}
+{"func":"score_3_1","score":1,"avgRating":3.7516005121638925,"avgSetSize":25.193548387096776,"_id":"nuqRuzGcFxi7NtUA"}
+{"$$indexCreated":{"fieldName":"score","unique":true,"sparse":false}}
