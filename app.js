@@ -599,7 +599,7 @@ function fetchRecommendations(playerId, testing) {
   var socket = this;
   fetchGameData(playerId, function (possibleMovies) {
     var list = [];
-
+    var possibleKeys = Object.keys(possibleKeys);
     db.users.findOne({facebook_id: playerId}, function (err, user) {
       possibleKeys.forEach(function (movie) {
         var movie_i = parseInt(movie);
