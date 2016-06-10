@@ -442,7 +442,6 @@ function resetTime() {
 function gameOver() {
   io.sockets.emit('gameOver');
 
-  //TODO record all the events
   joinedPlayers = {};
   players = [];
   suggested = {};

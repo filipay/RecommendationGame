@@ -647,7 +647,6 @@ function onDragMove() {
 }
 
 function isCardOnAvatar(card) {
-  // TODO fix this
   if (bin.containsPoint(card.toGlobal(new Point(0,0)))) {
     return (card.assignedTo = bin);
 
@@ -983,7 +982,7 @@ function hslToHex(h, s, l){
 }
 
 
-// Queue the information coming so the user can see it 
+// Queue the information coming so the user can see it
 var queue = 0;
 function showInfo(player, info) {
   var options = {};
