@@ -426,7 +426,7 @@ function sendLeaderboard() {
 
 //Handle data coming in about the players card
 function userHand(username, cards) {
-  if (cards.length === 0 && playersFinished === maxPlayers) {
+  if (cards.length === 0) {
     gameOver();
     return;
   }
